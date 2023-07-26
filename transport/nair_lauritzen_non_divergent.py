@@ -29,10 +29,10 @@ eqn = AdvectionEquation(domain, V, "D")
 # 2. gaussian_surfaces - Gaussian surfaces (Smooth scalar field)
 # 3. slotted_cylinder - Slotted Cylinder (Non-smooth scalar field)
 
-scalar_case = 'cosine_bells'
+scalar_case = 'gaussian_surfaces'
 
 # I/O
-dirname = "nair_lauritzen"+scalar_case
+dirname = "nair_lauritzen_"+scalar_case
 
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
@@ -62,39 +62,56 @@ if scalar_case == 'cosine_bells':
 elif scalar_case == 'gaussian_surfaces':
   X = R*cos(theta)*cos(lamda)
   Y = R*cos(theta)*sin(lamda)
-  Z = R*sin(theta)  
+  Z = R*sin(theta)
+
+  X1 = R*cos(pi/3)*cos(pi)
+  Y1 = R*cos(pi/3)*sin(pi)
+  Z1 = R*sin(pi/3)  
   
-  Dexpr = 0.5
+  X2 = R*cos(-pi/3)*cos(pi)
+  Y2 = R*cos(-pi/3)*sin(pi)
+  Z2 = R*sin(-pi/3)   
+  
+  # Define the two Gaussian bumps
+  g1 = exp(-5*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
+  g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
+  
+  Dexpr = g1 + g2
 
 elif scalar_case == 'slotted_cylinder':
   Dexpr = 0.5
 
+else:
+  raise NotImplementedError('Scalar case specified has not been implemented')
 
-
-T = tmax
-tc = Constant(0)
+T = 12*day#tmax
 k = 10*R/T
-u_zonal = k*pow(sin(lamda - 2*pi*tc/T), 2)*sin(2*theta)*cos(pi*tc/T) + ((2*pi*R)/T)*cos(theta)
-u_merid = k*sin(2*(lamda - 2*pi*tc/T))*cos(theta)*cos(pi*tc/T)
-cartesian_u_expr = -u_zonal*sin(lamda) - u_merid*sin(theta)*cos(lamda)
-cartesian_v_expr = u_zonal*cos(lamda) - u_merid*sin(theta)*sin(lamda)
-cartesian_w_expr = u_merid*cos(theta)
-u_expr = as_vector((cartesian_u_expr, cartesian_v_expr, cartesian_w_expr))
 
-def ubar(t):
-    return u_expr
+# Set up the non-divergent, time-varying, velocity field
+def u_t(t):
+  u_zonal = k*pow(sin(lamda - 2*pi*t/T), 2)*sin(2*theta)*cos(pi*t/T) + ((2*pi*R)/T)*cos(theta)
+  u_merid = k*sin(2*(lamda - 2*pi*t/T))*cos(theta)*cos(pi*t/T)
+  
+  cartesian_u_expr = -u_zonal*sin(lamda) - u_merid*sin(theta)*cos(lamda)
+  cartesian_v_expr = u_zonal*cos(lamda) - u_merid*sin(theta)*sin(lamda)
+  cartesian_w_expr = u_merid*cos(theta)
+  
+  u_expr = as_vector((cartesian_u_expr, cartesian_v_expr, cartesian_w_expr))
+  
+  return u_expr
+
 
 transport_scheme = SSPRK3(domain)
 transport_method = DGUpwind(eqn, "D")
     
 # Time stepper
 stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
-                              prescribed_transporting_velocity=ubar)
+                              prescribed_transporting_velocity=u_t)
 
 # initial conditions
 u0 = stepper.fields("u")
 D0 = stepper.fields("D")
 D0.interpolate(Dexpr)
-u0.project(u_expr)
+u0.project(u_t(0))
 
 stepper.run(t=0, tmax=tmax)
