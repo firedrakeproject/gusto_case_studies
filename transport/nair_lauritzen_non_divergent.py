@@ -1,6 +1,6 @@
 from gusto import *
 from firedrake import IcosahedralSphereMesh, Constant, ge, le, exp, cos, \
-    conditional, interpolate, SpatialCoordinate, VectorFunctionSpace, \
+    sin, conditional, interpolate, SpatialCoordinate, VectorFunctionSpace, \
     Function, assemble, dx, FunctionSpace, pi, min_value, acos
 
 import numpy as np
@@ -24,12 +24,12 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 #Specify the initial condition case for the scalar field
-# Choose from:
+# Choose from (these all give two bumps):
 # 1. cosine_bells - Cosine bells (Quasi-smooth scalar field)
-# 2. gaussian_surfaces - Gaussian surfaces (Smooth scalar field)
+# 2. gaussian - Gaussian surfaces (Smooth scalar field)
 # 3. slotted_cylinder - Slotted Cylinder (Non-smooth scalar field)
 
-scalar_case = 'gaussian_surfaces'
+scalar_case = 'gaussian'
 
 # I/O
 dirname = "nair_lauritzen_"+scalar_case
@@ -45,9 +45,12 @@ io = IO(domain, output)
 
 # get lat lon coordinates
 theta, lamda = latlon_coords(mesh)
-phi_c = 0.0
-lamda_c1 = 5*pi/6
-lamda_c2 = 7*pi/6
+
+# Specify locations of the two bumps
+theta_c1 = 0.0
+theta_c2 = 0.0
+lamda_c1 = pi/6
+lamda_c2 = -pi/6
 R_t = R/2.
 
 if scalar_case == 'cosine_bells': 
@@ -55,26 +58,27 @@ if scalar_case == 'cosine_bells':
   def dist(lamda_, theta_, R0=R):
       return R0*acos(sin(theta_)*sin(theta) + cos(theta_)*cos(theta)*cos(lamda - lamda_))
   
-  d1 = min_value(1.0, dist(lamda_c1, phi_c)/R_t)
-  d2 = min_value(1.0, dist(lamda_c2, phi_c)/R_t)
+  d1 = min_value(1.0, dist(lamda_c1, theta_c1)/R_t)
+  d2 = min_value(1.0, dist(lamda_c2, theta_c2)/R_t)
   Dexpr = 0.5*(1 + cos(pi*d1)) + 0.5*(1 + cos(pi*d2))
 
-elif scalar_case == 'gaussian_surfaces':
-  X = R*cos(theta)*cos(lamda)
-  Y = R*cos(theta)*sin(lamda)
-  Z = R*sin(theta)
+elif scalar_case == 'gaussian':
+  X = cos(theta)*cos(lamda)
+  Y = cos(theta)*sin(lamda)
+  Z = sin(theta)
 
-  X1 = R*cos(pi/3)*cos(pi)
-  Y1 = R*cos(pi/3)*sin(pi)
-  Z1 = R*sin(pi/3)  
+  X1 = cos(theta_c1)*cos(lamda_c1)
+  Y1 = cos(theta_c1)*sin(lamda_c1)
+  Z1 = sin(theta_c1  
   
-  X2 = R*cos(-pi/3)*cos(pi)
-  Y2 = R*cos(-pi/3)*sin(pi)
-  Z2 = R*sin(-pi/3)   
+  X2 = cos(theta_c2)*cos(lamda_c2)
+  Y2 = cos(theta_c2)*sin(lamda_c2)
+  Z2 = sin(theta_c2)   
   
   # Define the two Gaussian bumps
   g1 = exp(-5*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
   g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
+  #g3 = 0.01*cos(theta)*cos(lamda)
   
   Dexpr = g1 + g2
 
