@@ -15,13 +15,13 @@ import numpy as np
 # 2. gaussian - Gaussian surfaces (Smooth scalar field)
 # 3. slotted_cylinder - Slotted Cylinder (Non-smooth scalar field)
 
-scalar_case = 'slotted_cylinder'
+scalar_case = 'cosine_bells'
 
 ######################
 
 # Time parameters
 day = 24.*60.*60.
-dt = 300.
+dt = 900.
 tmax = 12*day
 
 # Radius of the Earth
@@ -29,7 +29,7 @@ R = 6371220.
 
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=5, degree=2)
+                             refinement_level=3, degree=2)
 x = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
