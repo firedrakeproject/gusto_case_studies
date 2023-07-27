@@ -25,20 +25,19 @@ x = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
 # Equation
-V = domain.spaces("DG")
+V = domain.spaces("HDiv")
 eqn = AdvectionEquation(domain, V, "F")
 
 # I/O
 dirname = "four_part_sbr"
 
-# Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
-                          dumplist_latlon=['D'],
-                          log_level="INFO",
-                          dump_nc = True,
-                          dump_vtus = False)
+                          dumplist_latlon=['F'],
+                          log_level="INFO")
                           
-io = IO(domain, output)
+diagnostic_fields = [ZonalComponent('F'), MeridionalComponent('F')]
+                          
+io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # get lat lon coordinates
 theta, lamda = latlon_coords(mesh)
@@ -70,11 +69,9 @@ U = 2*pi*R/T
 def u_t(t):
   tc = float(2*t/T)
   if ( tc % 2 < 1 ):
-    print('case1')
     u_zonal = U*cos(theta)
     u_merid = 0*U
   else:
-    print('case2')
     u_zonal = -U*cos(lamda)*sin(theta)
     u_merid = U*sin(lamda)*(cos(theta)**2 - sin(theta)**2)
   
