@@ -21,7 +21,7 @@ scalar_case = 'slotted_cylinder'
 
 # Time parameters
 day = 24.*60.*60.
-dt = 900.
+dt = 300.
 tmax = 12*day
 
 # Radius of the Earth
@@ -38,7 +38,7 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_12day_"+scalar_case
+dirname = "nair_lauritzen_nondiv_"+scalar_case
 
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
@@ -99,10 +99,10 @@ elif scalar_case == 'slotted_cylinder':
                   
   Dexpr = conditional( dist1(lamda, theta) < (1./2.), \
             conditional( (abs(lamda - lamda_c1) < (1./12.) ), \
-              conditional( (theta - theta_c1) < (-5./24.), 1.0, 0.0), 1.0), \
+              conditional( (theta - theta_c1) < (-5./24.), 1.0, 0.1), 1.0), \
                 conditional ( dist2(lamda, theta) < (1./2.), \
                   conditional( (abs(lamda - lamda_c2) < (1./12.) ), \
-                    conditional( (theta - theta_c2) > (5./24.), 1.0, 0.0), 1.0 ), 0.0 ))  
+                    conditional( (theta - theta_c2) > (5./24.), 1.0, 0.1), 1.0 ), 0.1 ))  
 
 else:
   raise NotImplementedError('Scalar case specified has not been implemented')

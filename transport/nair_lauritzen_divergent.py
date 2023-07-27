@@ -15,13 +15,13 @@ import numpy as np
 # 2. gaussian - Gaussian surfaces (Smooth scalar field)
 # 3. slotted_cylinder - Slotted Cylinder (Non-smooth scalar field)
 
-scalar_case = 'cosine_bells'
+scalar_case = 'slotted_cylinder'
 
 ######################
 
 # Time parameters
 day = 24.*60.*60.
-dt = 900.
+dt = 300.
 tmax = 12*day
 
 # Radius of the Earth
@@ -29,7 +29,7 @@ R = 6371220.
 
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=3, degree=2)
+                             refinement_level=5, degree=2)
 x = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
@@ -99,18 +99,18 @@ elif scalar_case == 'slotted_cylinder':
                   
   Dexpr = conditional( dist1(lamda, theta) < (1./2.), \
             conditional( (abs(lamda - lamda_c1) < (1./12.) ), \
-              conditional( (theta - theta_c1) < (-5./24.), 1.0, 0.0), 1.0), \
+              conditional( (theta - theta_c1) < (-5./24.), 1.0, 0.1), 1.0), \
                 conditional ( dist2(lamda, theta) < (1./2.), \
                   conditional( (abs(lamda - lamda_c2) < (1./12.) ), \
-                    conditional( (theta - theta_c2) > (5./24.), 1.0, 0.0), 1.0 ), 0.0 ))  
+                    conditional( (theta - theta_c2) > (5./24.), 1.0, 0.1), 1.0 ), 0.1 ))  
 
 else:
   raise NotImplementedError('Scalar case specified has not been implemented')
 
-T = tmax
+T = 12*day#tmax
 k = 10*R/T
 
-# Set up the non-divergent, time-varying, velocity field
+# Set up the divergent, time-varying, velocity field
 def u_t(t):
   u_zonal = -k*(sin(lamda/2)**2)*sin(2*theta)*(cos(theta)**2)*cos(pi*t/T)
   u_merid = k*sin(lamda)*(cos(theta)**3)*cos(pi*t/T)
