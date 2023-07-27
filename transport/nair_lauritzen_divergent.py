@@ -6,7 +6,7 @@ from firedrake import IcosahedralSphereMesh, Constant, ge, le, exp, cos, \
 import numpy as np
 
 # This script runs the Nair_Laurtizen (2010) test cases with 
-# a non-divergent velocity field.
+# a divergent velocity field.
 
 ######################
 # Specify the initial condition case for the scalar field
@@ -15,7 +15,7 @@ import numpy as np
 # 2. gaussian - Gaussian surfaces (Smooth scalar field)
 # 3. slotted_cylinder - Slotted Cylinder (Non-smooth scalar field)
 
-scalar_case = 'slotted_cylinder'
+scalar_case = 'cosine_bells'
 
 ######################
 
@@ -29,7 +29,7 @@ R = 6371220.
 
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=5, degree=2)
+                             refinement_level=3, degree=2)
 x = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
@@ -38,7 +38,7 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_12day_"+scalar_case
+dirname = "nair_lauritzen_div_"+scalar_case
 
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
@@ -55,8 +55,8 @@ theta, lamda = latlon_coords(mesh)
 # Specify locations of the two bumps
 theta_c1 = 0.0
 theta_c2 = 0.0
-lamda_c1 = -pi/6
-lamda_c2 = pi/6
+lamda_c1 = -pi/4
+lamda_c2 = pi/4
 
 if scalar_case == 'cosine_bells': 
 
@@ -112,8 +112,8 @@ k = 10*R/T
 
 # Set up the non-divergent, time-varying, velocity field
 def u_t(t):
-  u_zonal = k*pow(sin(lamda - 2*pi*t/T), 2)*sin(2*theta)*cos(pi*t/T) + ((2*pi*R)/T)*cos(theta)
-  u_merid = k*sin(2*(lamda - 2*pi*t/T))*cos(theta)*cos(pi*t/T)
+  u_zonal = -k*(sin(lamda/2)**2)*sin(2*theta)*(cos(theta)**2)*cos(pi*t/T)
+  u_merid = k*sin(lamda)*(cos(theta)**3)*cos(pi*t/T)
   
   cartesian_u_expr = -u_zonal*sin(lamda) - u_merid*sin(theta)*cos(lamda)
   cartesian_v_expr = u_zonal*cos(lamda) - u_merid*sin(theta)*sin(lamda)
