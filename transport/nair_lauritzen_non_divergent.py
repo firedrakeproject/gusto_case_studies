@@ -38,11 +38,15 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_nondiv_"+scalar_case
+dirname = "nair_lauritzen_nondiv_dumptest_"+scalar_case
+
+# Dump the solution at each day
+dumpfreq = int(day/dt)
 
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
                           dumplist_latlon=['D'],
+                          dumpfreq = dumpfreq,
                           log_level="INFO",
                           dump_nc = True,
                           dump_vtus = False)
@@ -112,7 +116,7 @@ k = 10*R/T
 
 # Set up the non-divergent, time-varying, velocity field
 def u_t(t):
-  u_zonal = k*pow(sin(lamda - 2*pi*t/T), 2)*sin(2*theta)*cos(pi*t/T) + ((2*pi*R)/T)*cos(theta)
+  u_zonal = k*(sin(lamda - 2*pi*t/T)**2)*sin(2*theta)*cos(pi*t/T) + ((2*pi*R)/T)*cos(theta)
   u_merid = k*sin(2*(lamda - 2*pi*t/T))*cos(theta)*cos(pi*t/T)
   
   cartesian_u_expr = -u_zonal*sin(lamda) - u_merid*sin(theta)*cos(lamda)

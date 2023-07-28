@@ -40,9 +40,13 @@ eqn = AdvectionEquation(domain, V, "D")
 # I/O
 dirname = "nair_lauritzen_div_"+scalar_case
 
+# Dump the solution at each day
+dumpfreq = int(day/dt)
+
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
                           dumplist_latlon=['D'],
+                          dumpfreq = dumpfreq,
                           log_level="INFO",
                           dump_nc = True,
                           dump_vtus = False)
@@ -107,7 +111,7 @@ elif scalar_case == 'slotted_cylinder':
 else:
   raise NotImplementedError('Scalar case specified has not been implemented')
 
-T = 12*day#tmax
+T = tmax
 k = 10*R/T
 
 # Set up the divergent, time-varying, velocity field
