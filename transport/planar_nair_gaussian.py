@@ -9,18 +9,24 @@ import numpy as np
 # paper by Bendall, Wood, Thuburn, and Cotter. This considers a planar version of
 # the Gaussian test case given by Nair and Laurtizen. 
 
-# Time parameters
-day = 24.*60.*60.
-dt = 900.
-tmax = 12*day
-
-# Radius of the Earth
-R = 6371220.
+# Specify whether to run the 'convergence' or 'consistency' version of the test.
+case = 'convergence'
 
 # Domain
-mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=3, degree=2)
-x = SpatialCoordinate(mesh)
+Lx = 2000
+Hz = 2000
+
+dx = 160
+dz = 160
+
+nlayers = int(Hz/dz)  # horizontal layers
+columns = int(Lx/dx)  # number of columns
+
+m = PeriodicIntervalMesh(columns, Lx)
+mesh = ExtrudedMesh(m, layers=nlayers, layer_height=Hz/nlayers)
+domain = Domain(mesh, dt, "CG", 1)
+    
+x,z = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
 # Equation
@@ -28,10 +34,14 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_nondiv_dumptest_"+scalar_case
+dirname = "planar_nair_gaussian"
+
+# Time parameters
+dt = 2.
+tmax = 2000.
 
 # Dump the solution at each day
-dumpfreq = int(day/dt)
+dumpfreq = int(100./dt)
 
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
@@ -43,14 +53,39 @@ output = OutputParameters(dirname=dirname,
                           
 io = IO(domain, output)
 
-# get lat lon coordinates
-theta, lamda = latlon_coords(mesh)
+# Set up the divergent, time-varying, velocity field
+U = Lx/tmax
+W = U/10.
 
-# Specify locations of the two bumps
-theta_c1 = 0.0
-theta_c2 = 0.0
-lamda_c1 = -pi/6
-lamda_c2 = pi/6
+def u_t(t):
+  xd = x - (Lx/2) - U*t
+  u = U - (W*pi*Lx/Hz)*cos(pi*t/tmax)*cos(2*pi*xd/Lx)*cos(pi*z/Hz)
+  w = 2*pi*W*cos(pi*t/tmax)*sin(2*pi*xd/Lx)*sin(pi*z/Hz)
+  
+  u_expr = as_vector((u,w))
+  
+  return u_expr
+
+# Specify locations of the two Gaussians
+x_c1 = Lx/8.
+z_c1 = Hz/2.
+
+x_c2 = -Lx/8.
+z_c2 = Hz/2.
+
+def l2_dist(xc,zc):
+  return min(abs(x-xc), Lx-abs(x-xc))**2 + (z-zc)**2
+
+if case == 'convergence':
+  f0 = 0.05
+elif case == 'consistency':
+  f0 = 0.5
+else:
+  raise NotImplementedError('Specified case is not recognised.')
+
+# Construct the two Gaussians
+g1 = 
+
 
 if scalar_case == 'cosine_bells': 
 
@@ -104,18 +139,7 @@ else:
 T = tmax
 k = 10*R/T
 
-# Set up the divergent, time-varying, velocity field
-def u_t(t):
-  u_zonal = -k*(sin(lamda/2)**2)*sin(2*theta)*(cos(theta)**2)*cos(pi*t/T)
-  u_merid = k*sin(lamda)*(cos(theta)**3)*cos(pi*t/T)
-  
-  cartesian_u_expr = -u_zonal*sin(lamda) - u_merid*sin(theta)*cos(lamda)
-  cartesian_v_expr = u_zonal*cos(lamda) - u_merid*sin(theta)*sin(lamda)
-  cartesian_w_expr = u_merid*cos(theta)
-  
-  u_expr = as_vector((cartesian_u_expr, cartesian_v_expr, cartesian_w_expr))
-  
-  return u_expr
+
 
 
 transport_scheme = SSPRK3(domain)
