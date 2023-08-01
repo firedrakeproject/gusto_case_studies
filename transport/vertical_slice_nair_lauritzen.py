@@ -1,5 +1,5 @@
 from gusto import *
-from firedrake import IcosahedralSphereMesh, Constant, ge, le, exp, cos, \
+from firedrake import PeriodicIntervalMesh, ExtrudedMesh, Constant, ge, le, exp, cos, \
     sin, conditional, interpolate, SpatialCoordinate, VectorFunctionSpace, \
     Function, assemble, dx, FunctionSpace, pi, min_value, acos
 
@@ -39,6 +39,12 @@ Hz = 2000
 dx = 160
 dz = 160
 
+# Time parameters
+dt = 2.
+tmax = 2000.
+
+
+
 nlayers = int(Hz/dz)  # horizontal layers
 columns = int(Lx/dx)  # number of columns
 
@@ -49,7 +55,7 @@ x,z = SpatialCoordinate(mesh)
 
 m_X = ActiveTracer(name='m_X', space=m_X_space,
                  variable_type=TracerVariableType.mixing_ratio,
-                 transport_eqn=TransportEquationType.advective)
+                 transport_eqn=TransportEquationType.conservative)
                  
 rho_d = ActiveTracer(name='rho_d', space='DG',
                  variable_type=TracerVariableType.density,
@@ -60,14 +66,10 @@ tracers = [m_X,rho_d]
 
 # Equation
 V = domain.spaces("DG")
-eqn = CoupledTransportEquation(domain, V, active_tracers)
+eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
 dirname = "vertical_slice_nair_lauritzen"
-
-# Time parameters
-dt = 2.
-tmax = 2000.
 
 # Dump the solution at each day
 dumpfreq = int(100./dt)
@@ -103,7 +105,7 @@ xc2 = -Lx/8.
 zc2 = Hz/2.
 
 def l2_dist(xc,zc):
-  return min(abs(x-xc), Lx-abs(x-xc))**2 + (z-zc)**2
+  return min_value(abs(x-xc), Lx-abs(x-xc))**2 + (z-zc)**2
 
 if case == 'convergence':
   f0 = 0.05
@@ -140,10 +142,11 @@ else:
 
 
 transport_scheme = SSPRK3(domain)
-transport_method = DGUpwind(eqn, "D")
+#transport_methods = [DGUpwind(eqn, "m_X"), DGUpwind(eqn, "rho_d")]
+transport_methods = []
     
 # Time stepper
-stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
+stepper = PrescribedTransport(eqn, transport_scheme, io, transport_methods,
                               prescribed_transporting_velocity=u_t)
 
 # initial conditions
