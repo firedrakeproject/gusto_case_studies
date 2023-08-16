@@ -1,7 +1,7 @@
 from gusto import *
 from firedrake import PeriodicIntervalMesh, ExtrudedMesh, Constant, ge, le, exp, cos, \
     sin, conditional, interpolate, SpatialCoordinate, VectorFunctionSpace, \
-    Function, assemble, dx, FunctionSpace, pi, min_value, acos
+    Function, assemble, dx, FunctionSpace, pi, min_value, acos, as_vector
 
 import numpy as np
 
@@ -27,7 +27,7 @@ There are two configurations that can be run:
 """
 
 # Specify whether to run the 'convergence' or 'consistency' version of the test.
-case = 'consistency'
+case = 'convergence'
 
 # Choose space for the mixing ratio.
 # Theta will make it staggered relative to the density
@@ -69,7 +69,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "vertical_slice_nair_lauritzen_"+case
+dirname = "vertical_slice_nair_lauritzen_TEST"+case
 
 # Dump the solution at each day
 dumpfreq = int(100./dt)
@@ -77,11 +77,14 @@ dumpfreq = int(100./dt)
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
                           dumpfreq = dumpfreq,
-                          log_level="INFO",
                           dump_nc = True,
                           dump_vtus = False)
-                          
-io = IO(domain, output)
+
+# Use a tracer density diagnostic to track conservation
+diagnostic_fields = [TracerDensity('m_X','rho_d')]
+#diagnostic_fields = [TracerDensity()]
+
+io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Set up the divergent, time-varying, velocity field
 U = Lx/tmax

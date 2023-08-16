@@ -1,7 +1,7 @@
 from gusto import *
 from firedrake import IcosahedralSphereMesh, Constant, ge, le, exp, cos, \
     sin, conditional, interpolate, SpatialCoordinate, VectorFunctionSpace, \
-    Function, assemble, dx, FunctionSpace, pi, min_value, acos
+    Function, assemble, dx, FunctionSpace, pi, min_value, acos, as_vector
 
 import numpy as np
 
@@ -38,7 +38,7 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_nondiv_dumptest_"+scalar_case
+dirname = "nair_lauritzen_nondiv_"+scalar_case
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -47,7 +47,6 @@ dumpfreq = int(day/dt)
 output = OutputParameters(dirname=dirname,
                           dumplist_latlon=['D'],
                           dumpfreq = dumpfreq,
-                          log_level="INFO",
                           dump_nc = True,
                           dump_vtus = False)
                           
