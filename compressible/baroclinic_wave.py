@@ -19,7 +19,7 @@ Variable_Height = False
 Theta_Limiter = False
 if Theta_Limiter:
     dirname = f'{dirname}theta_limited_'
-
+BetaPlane = False
 
 # -------------------------------------------------------------- #
 # Set up Model
@@ -45,12 +45,17 @@ else:
 
 m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerHeight, extrusion_type='radial')
+lat, lon = latlon_coords(mesh)
 domain = Domain(mesh, dt, "RTCF", degree=1)
 
 # Equations
 params = CompressibleParameters()
 omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
+if BetaPlane:
+    Omega = as_vector((0,0,omega * cos(lat)))
+    dirname = f'{dirname}beta_plane_)'
+    
 
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option='vector_advection_form')
 print(eqn.X.function_space().dim())
