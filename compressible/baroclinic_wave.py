@@ -53,8 +53,8 @@ params = CompressibleParameters()
 omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
 if BetaPlane:
-    Omega = as_vector((0,0,omega * cos(lat)))
-    dirname = f'{dirname}beta_plane_)'
+    Omega= None    #Omega = as_vector((0,0,omega * cos(lat)))
+    #dirname = f'{dirname}beta_plane_)'
     
 
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option='vector_advection_form')
