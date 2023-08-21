@@ -19,7 +19,7 @@ Variable_Height = False
 Theta_Limiter = False
 if Theta_Limiter:
     dirname = f'{dirname}theta_limited_'
-BetaPlane = False
+BetaPlane = True  # needs renaming
 
 # -------------------------------------------------------------- #
 # Set up Model
