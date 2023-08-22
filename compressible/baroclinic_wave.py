@@ -21,8 +21,8 @@ if perturbed:
 else: 
     dirname = 'baroclinic_sbr_'
 
-#u_transport = SSPRK3 # or Trapezium Rule
-u_transport = TrapeziumRule
+u_transport = 'SSPRK3' # or Trapezium Rule
+#u_transport = 'TrapeziumRule'
 dirname = f'{dirname}{u_transport}_'
 #u_form = 'vector_advection_form' # Try vector invariant form
 u_form = 'vector_invariant_form'
@@ -95,7 +95,11 @@ else:
     ibp = None
 
 transported_fields = []
-transported_fields.append(u_transport(domain, "u"))
+if u_transport == 'TrapeziumRule':
+    transported_fields.append(TrapeziumRule(domain, "u"))
+elif u_transport =='SSPRK3':
+    transported_fields.append(SSPRK3(domain, "u"))
+
 transported_fields.append(SSPRK3(domain, "rho"))
 transported_fields.append(SSPRK3(domain, "theta", options=options, limiter=limiter))
 transport_methods = [DGUpwind(eqn, 'u'),
