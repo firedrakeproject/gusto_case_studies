@@ -15,15 +15,17 @@ deltaz = 2e3 # 15 layers, as we are in a higher space this matches the paper bet
 # --------------------------------------------------------------#
 # Script Options
 # -------------------------------------------------------------- #
-perturbed = True
+perturbed = False
 if perturbed:
     dirname = 'baroclinic_wave_'
 else: 
     dirname = 'baroclinic_sbr_'
 
-u_transport = SSPRK3 # or Trapezium Rule
+#u_transport = SSPRK3 # or Trapezium Rule
+u_transport = TrapeziumRule
 dirname = f'{dirname}{u_transport}_'
-u_form = 'vector_advection_form' # Try vector invariant form
+#u_form = 'vector_advection_form' # Try vector invariant form
+u_form = 'vector_invariant_form'
 dirname = f'{dirname}{u_form}_'
 
 variable_height = True
