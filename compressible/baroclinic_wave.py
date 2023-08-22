@@ -11,15 +11,25 @@ days = 15.
 tmax = days * 24. * 60. * 60.
 n = 25     # cells per cubed sphere face edge
 deltaz = 2e3 # 15 layers, as we are in a higher space this matches the paper better
-dirname = 'baroclinic_wave_'
+
 # --------------------------------------------------------------#
 # Script Options
 # -------------------------------------------------------------- #
-Variable_Height = False
-Theta_Limiter = False
-if Theta_Limiter:
+perturbed = True
+if perturbed:
+    dirname = 'baroclinic_wave_'
+else: 
+    dirname = 'baroclinic_sbr_'
+
+u_transport = SSPRK3 # or Trapezium Rule
+dirname = f'{dirname}{u_transport}_'
+u_form = 'vector_advection_form' # Try vector invariant form
+dirname = f'{dirname}{u_form}_'
+
+variable_height = True
+limit_theta = False
+if limit_theta:
     dirname = f'{dirname}theta_limited_'
-BetaPlane = True  # needs renaming
 
 # -------------------------------------------------------------- #
 # Set up Model
@@ -29,7 +39,7 @@ a = 6.371229e6  # radius of earth
 ztop = 3.0e4  # max height
 nlayers = int(ztop/deltaz) 
 
-if Variable_Height == True: 
+if variable_height == True: 
     dirname = f'{dirname}variable_height_'
     layerHeight=[]
     runningHeight=0
@@ -52,12 +62,8 @@ domain = Domain(mesh, dt, "RTCF", degree=1)
 params = CompressibleParameters()
 omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
-if BetaPlane:
-    Omega= None    #Omega = as_vector((0,0,omega * cos(lat)))
-    #dirname = f'{dirname}beta_plane_)'
     
-
-eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option='vector_advection_form')
+eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
 print(eqn.X.function_space().dim())
 
 dirname = f'{dirname}dt={dt}_n={n}'
@@ -73,21 +79,26 @@ diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport Schemes 
-if ThetaLimiter:
+if limit_theta:
     Vtheta = domain.spaces("theta")
     limiter = ThetaLimiter(Vtheta)
-
+    options=EmbeddedDGOptions()
 else:
-    limiter = None    
+    limiter = None 
+    options = SUPGOptions()   
 
-transport_option=SUPGOptions()
+if options == SUPGOptions():
+    ibp=options.ibp
+else:
+    ibp = None
+
 transported_fields = []
-transported_fields.append(TrapeziumRule(domain, "u"))
+transported_fields.append(u_transport(domain, "u"))
 transported_fields.append(SSPRK3(domain, "rho"))
-transported_fields.append(SSPRK3(domain, "theta", options=SUPGOptions(), limiter=limiter))
+transported_fields.append(SSPRK3(domain, "theta", options=options, limiter=limiter))
 transport_methods = [DGUpwind(eqn, 'u'),
                      DGUpwind(eqn, 'rho'),
-                     DGUpwind(eqn, 'theta', ibp=transport_option.ibp)]
+                     DGUpwind(eqn, 'theta', ibp=ibp)]
 # Linear Solver
 linear_solver = CompressibleSolver(eqn)
 
@@ -184,16 +195,17 @@ rho_expr = P_expr / (Rd * Temp)
 # Configuring fields
 # -------------------------------------------------------------- #
 # get components of u in spherical polar coordinates
-zonal_u = wind + zonal_pert
-merid_u = Constant(0.0) + meridional_pert
-radial_u = Constant(0.0)
 
-(u_pert, v_pert, w_pert) = sphere_to_cartesian(mesh, zonal_pert, merid_u)
-# now convert to global Cartesian coordinates
+if perturbed:
+    zonal_u = wind + zonal_pert
+    merid_u = Constant(0.0) + meridional_pert
+    radial_u = Constant(0.0)
+else:
+    zonal_u = wind 
+    merid_u = Constant(0.0) 
+    radial_u = Constant(0.0)
+
 (u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
-
-wind_pert = stepper.fields('u_pert', space=Vu)
-wind_pert.project(as_vector([u_pert, v_pert, w_pert]))
 
 # obtain initial conditions
 print('Set up initial conditions')
