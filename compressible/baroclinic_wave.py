@@ -15,7 +15,7 @@ deltaz = 2e3 # 15 layers, as we are in a higher space this matches the paper bet
 # --------------------------------------------------------------#
 # Script Options
 # -------------------------------------------------------------- #
-perturbed = False
+perturbed = True
 if perturbed == True:
     dirname = 'baroclinic_wave_'
 else: 
