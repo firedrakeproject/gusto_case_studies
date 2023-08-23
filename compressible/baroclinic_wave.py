@@ -64,7 +64,7 @@ domain = Domain(mesh, dt, "RTCF", degree=1)
 params = CompressibleParameters()
 omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
-    
+print('making eqn')    
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
 print(eqn.X.function_space().dim())
 
