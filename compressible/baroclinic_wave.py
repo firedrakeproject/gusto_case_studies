@@ -15,7 +15,7 @@ deltaz = 2e3 # 15 layers, as we are in a higher space this matches the paper bet
 # --------------------------------------------------------------#
 # Script Options
 # -------------------------------------------------------------- #
-perturbed = True
+perturbed = False
 if perturbed == True:
     dirname = 'baroclinic_wave_'
 else: 
@@ -89,10 +89,11 @@ if options == SUPGOptions():
     ibp=options.ibp
 else:
     ibp = None
+ibp = SUPGOptions().ibp
 transported_fields=[]
 transported_fields.append(TrapeziumRule(domain, "u"))
 transported_fields.append(SSPRK3(domain, "rho"))
-transported_fields.append(SSPRK3(domain, "theta", options=options, limiter=limiter))
+transported_fields.append(SSPRK3(domain, "theta", options=SUPGOptions(), limiter=None))
 transport_methods = [DGUpwind(eqn, 'u'),
                      DGUpwind(eqn, 'rho'),
                      DGUpwind(eqn, 'theta', ibp=ibp)]
@@ -193,14 +194,13 @@ rho_expr = P_expr / (Rd * Temp)
 # -------------------------------------------------------------- #
 # get components of u in spherical polar coordinates
 
+zonal_u = wind
+merid_u = Constant(0.0)
+radial_u = Constant(0.0)
+
 if perturbed == True:
-    zonal_u = wind + zonal_pert
-    merid_u = Constant(0.0) + meridional_pert
-    radial_u = Constant(0.0)
-else:
-    zonal_u = wind 
-    merid_u = Constant(0.0) 
-    radial_u = Constant(0.0)
+    zonal_u = zonal_u + zonal_pert
+    merid_u = meridional_pert
 
 (u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
 
