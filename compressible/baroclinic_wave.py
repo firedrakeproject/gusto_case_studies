@@ -16,15 +16,11 @@ deltaz = 2e3 # 15 layers, as we are in a higher space this matches the paper bet
 # Script Options
 # -------------------------------------------------------------- #
 perturbed = False
-if perturbed:
+if perturbed == True:
     dirname = 'baroclinic_wave_'
 else: 
     dirname = 'baroclinic_sbr_'
 
-u_transport = 'SSPRK3' # or Trapezium Rule
-#u_transport = 'TrapeziumRule'
-dirname = f'{dirname}{u_transport}_'
-#u_form = 'vector_advection_form' # Try vector invariant form
 u_form = 'vector_invariant_form'
 dirname = f'{dirname}{u_form}_'
 
@@ -43,20 +39,20 @@ nlayers = int(ztop/deltaz)
 
 if variable_height == True: 
     dirname = f'{dirname}variable_height_'
-    layerHeight=[]
-    runningHeight=0
+    layerheight=[]
+    runningheight=0
     # Calculating Non-uniform height field
     for n in range(1,16):
         mu = 8
         height = ztop * ((mu * (n / 15)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
-        width = height - runningHeight
-        runningHeight = height
-        layerHeight.append(width)
+        width = height - runningheight
+        runningheight = height
+        layerheight.append(width)
 else: 
-    layerHeight = ztop / deltaz
+    layerheight = ztop / deltaz
 
 m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
-mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerHeight, extrusion_type='radial')
+mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
 lat, lon = latlon_coords(mesh)
 domain = Domain(mesh, dt, "RTCF", degree=1)
 
@@ -93,13 +89,8 @@ if options == SUPGOptions():
     ibp=options.ibp
 else:
     ibp = None
-
-transported_fields = []
-if u_transport == 'TrapeziumRule':
-    transported_fields.append(TrapeziumRule(domain, "u"))
-elif u_transport =='SSPRK3':
-    transported_fields.append(SSPRK3(domain, "u"))
-
+transported_fields=[]
+transported_fields.append(TrapeziumRule(domain, "u"))
 transported_fields.append(SSPRK3(domain, "rho"))
 transported_fields.append(SSPRK3(domain, "theta", options=options, limiter=limiter))
 transport_methods = [DGUpwind(eqn, 'u'),
@@ -202,7 +193,7 @@ rho_expr = P_expr / (Rd * Temp)
 # -------------------------------------------------------------- #
 # get components of u in spherical polar coordinates
 
-if perturbed:
+if perturbed == True:
     zonal_u = wind + zonal_pert
     merid_u = Constant(0.0) + meridional_pert
     radial_u = Constant(0.0)
