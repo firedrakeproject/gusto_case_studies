@@ -10,7 +10,7 @@ dt = 270.
 days = 15.
 tmax = days * 24. * 60. * 60.
 n = 25     # cells per cubed sphere face edge
-deltaz = 2e3 # 15 layers, as we are in a higher space this matches the paper better
+deltaz = 2.0e3 # 15 layers, as we are in a higher space this matches the paper better
 
 # --------------------------------------------------------------#
 # Script Options
@@ -24,7 +24,7 @@ else:
 u_form = 'vector_advection_form'
 dirname = f'{dirname}{u_form}_'
 
-variable_height = True
+variable_height = False
 limit_theta = False
 if limit_theta:
     dirname = f'{dirname}theta_limited_'
@@ -49,7 +49,7 @@ if variable_height == True:
         runningheight = height
         layerheight.append(width)
 else: 
-    layerheight = ztop / deltaz
+    layerheight = ztop / nlayers
 
 m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
@@ -69,9 +69,8 @@ output = OutputParameters(dirname=dirname,
                           dumpfreq=40,
                           dump_nc=True,
                           dump_vtus=False)
-diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'), 
-                     RadialComponent('u'), CourantNumber(), ZonalComponent('u_pert'),
-                     MeridionalComponent('u_pert'), Temperature(eqn), Pressure(eqn), 
+diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
+                     RadialComponent('u'), CourantNumber(), Temperature(eqn), Pressure(eqn), 
                      SteadyStateError('Temperature'), SteadyStateError('Pressure_Vt')]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
@@ -85,18 +84,17 @@ else:
     limiter = None 
     options = SUPGOptions()   
 
-if options == SUPGOptions():
-    ibp=options.ibp
-else:
-    ibp = None
-ibp = SUPGOptions().ibp
-transported_fields=[]
-transported_fields.append(TrapeziumRule(domain, "u"))
+transport_option=SUPGOptions()
+transported_fields = []
+transported_fields.append(TrapeziumRule(domain, "u", options=transport_option))
 transported_fields.append(SSPRK3(domain, "rho"))
-transported_fields.append(SSPRK3(domain, "theta", options=SUPGOptions(), limiter=None))
+transported_fields.append(SSPRK3(domain, "theta", options=transport_option))
+
 transport_methods = [DGUpwind(eqn, 'u'),
                      DGUpwind(eqn, 'rho'),
-                     DGUpwind(eqn, 'theta', ibp=ibp)]
+                     DGUpwind(eqn, 'theta', ibp=transport_option.ibp)]
+
+
 # Linear Solver
 linear_solver = CompressibleSolver(eqn)
 
@@ -154,7 +152,7 @@ C = ((k + 2) / 2)*((T0e - T0p) / (T0e * T0p))
 tao1 = A * lapse / T0 * exp((r - a)*lapse / T0) + B * (1 - 2*((r-a)/(b*H))**2)*exp(-((r-a) / (b*H))**2)
 tao2 = C * (1 - 2*((r-a)/(b*H))**2)*exp(-((r - a) / (b*H))**2)
 
-tao1_int = A * (exp(lapse * (r - a) / T0) - 1) + B * (r - a) * exp(-((r-a) / (b*H))**2)
+tao1_int = A * (exp(lapse * (r - a) / T0) - 1) + B * (r - a) * exp(-((r-a)/(b*H))**2)
 tao2_int = C * (r - a)  * exp(-((r-a) / (b*H))**2)
 
 # Variable fields
@@ -165,6 +163,7 @@ wind = ((g*k) / (2 * omega * a)) * (cos(lat)**(k-1) - cos(lat)**(k+1))*tao2_int*
 theta_expr = Temp * (P_expr / p0) ** (-params.kappa) 
 pie_expr = Temp / theta_expr
 rho_expr = P_expr / (Rd * Temp)
+
 # -------------------------------------------------------------- #
 # Perturbation
 # -------------------------------------------------------------- #
@@ -194,13 +193,13 @@ rho_expr = P_expr / (Rd * Temp)
 # -------------------------------------------------------------- #
 # get components of u in spherical polar coordinates
 
-zonal_u = wind
-merid_u = Constant(0.0)
+zonal_u = wind 
+merid_u = Constant(0.0) 
 radial_u = Constant(0.0)
 
-if perturbed == True:
-    zonal_u = zonal_u + zonal_pert
-    merid_u = meridional_pert
+#if perturbed == True:
+#    zonal_u = zonal_u + zonal_pert
+#    merid_u = meridional_pert
 
 (u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
 
