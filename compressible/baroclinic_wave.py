@@ -6,7 +6,7 @@ from gusto import *                                            #
 # -------------------------------------------------------------- #
 # Test case Parameters
 # -------------------------------------------------------------- #
-dt = 270.
+dt = 540.
 days = 15.
 tmax = days * 24. * 60. * 60.
 n = 25     # cells per cubed sphere face edge
@@ -15,7 +15,7 @@ deltaz = 2.0e3 # 15 layers, as we are in a higher space this matches the paper b
 # --------------------------------------------------------------#
 # Script Options
 # -------------------------------------------------------------- #
-perturbed = False
+perturbed = True
 if perturbed == True:
     dirname = 'baroclinic_wave_'
 else: 
@@ -66,7 +66,7 @@ print(eqn.X.function_space().dim())
 
 dirname = f'{dirname}dt={dt}_n={n}'
 output = OutputParameters(dirname=dirname,
-                          dumpfreq=40,
+                          dumpfreq=20,
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
