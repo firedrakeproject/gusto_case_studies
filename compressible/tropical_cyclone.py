@@ -18,15 +18,17 @@ limit_theta = False
 # ---------------------------------------------------------------------------- #
 # Test case Parameters
 # ---------------------------------------------------------------------------- #
-dt = 1200.
+dt = 600.
 days = 10.
 tmax = days * 24. * 60. * 60.
 dumpfreq = int(tmax / (2*days*dt))
 ncells = 11
 nlayers = 5
 # For short simulations
-tmax = 10*dt
-dumpfreq = 10
+tmax = 24*60*60
+dumpfreq = int(tmax / (24*dt))
+ncells = 25
+nlayers = 15
 # ---------------------------------------------------------------------------- #
 # Generate directory name to capture parameters
 # ---------------------------------------------------------------------------- #

@@ -11,12 +11,12 @@ import sys
 # Test case parameters
 # ---------------------------------------------------------------------------- #
 
-dt = 360.                      # 6 mins
+dt = 60.                       # 1 mins
 tmax = 5*24*60*60              # End time
 Lx = 1e6                       # Domain length in x direction
 Ly = 1e6                       # Domain length in y direction
-nx = 50                        # Number of cells in x direction
-ny = 50                        # Number of cells in y direction
+nx = 200                       # Number of cells in x direction
+ny = 200                       # Number of cells in y direction
 dumpfreq = int(tmax / (20*dt)) # Output dump frequency
 tau = 2.0*24*60*60             # Half life of source
 centre_x = 3 * Lx / 8.0        # x coordinate for volcano
