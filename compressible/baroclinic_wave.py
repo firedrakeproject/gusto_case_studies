@@ -1,33 +1,121 @@
-from firedrake import (ExtrudedMesh, functionspaceimpl,
-                       SpatialCoordinate, cos, sin, pi, sqrt, File,
-                       exp, Constant, Function, as_vector, acos,
-                       errornorm, norm, min_value, max_value, le, ge)
-from gusto import *                                            # 
+from firedrake import (ExtrudedMesh, functionspaceimpl, TensorProductElement,
+                       SpatialCoordinate, cos, sin, pi, sqrt, File, HDiv, HCurl,
+                       exp, Constant, Function, as_vector, acos, interval,
+                       errornorm, norm, min_value, max_value, le, ge, FiniteElement)
+from gusto import *                                            #
 # -------------------------------------------------------------- #
 # Test case Parameters
 # -------------------------------------------------------------- #
-dt = 540.
+dt = 270.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 25     # cells per cubed sphere face edge
-deltaz = 2.0e3 # 15 layers, as we are in a higher space this matches the paper better
-
+n = 5     # cells per cubed sphere face edge
+nlayers = 5
 # --------------------------------------------------------------#
-# Script Options
+# Configuratio Optionsn
 # -------------------------------------------------------------- #
+config = 'config1'
+# Lowest Order Configs
+if config == 'config1':   # lowest order no limiter
+    DGdegree = 0
+    u_form = 'vector_advection_form'
+    transport_option = 'recovered'
+    limited = False
+
+elif config == 'config2': # lowest order theta limited
+    DGdegree = 0
+    u_form = 'vector_advection_form'
+    transport_option = 'recovered'
+    limited = True
+# Vector advection form options
+elif config =='config3': # vector advection SUPG 
+    DGdegree = 1
+    u_form = 'vector_advection_form'
+    u_transport = SUPGOptions()
+    transport_name = 'SUPG'
+    limited = False
+
+elif config =='config4': # Vector advection embedded not limited
+    DGdegree = 1
+    u_form = 'vector_advection_form' 
+    u_transport = EmbeddedDGOptions()
+    transport_name = 'embedded'
+    limited = False
+
+elif config =='config5': # Vector advection embedded theta limited
+    DGdegree = 1
+    u_form = 'vector_advection_form'
+    u_transport = EmbeddedDGOptions()
+    transport_name = 'embedded'
+    limited = True
+# Vector invariant options
+elif config =='config6': # vector invariant SUPG
+    DGdegree = 1
+    u_form = 'vector_advection_form'
+    u_transport = SUPGOptions()
+    transport_name = 'SUPG'
+    limited = False
+
+elif config =='config7': # vector invariant embedded not limited
+    DGdegree = 1
+    u_form = 'vector_advection_form'
+    u_transport = EmbeddedDGOptions()
+    transport_name = 'embedded'
+    limited = False
+
+elif config =='config8': # vector invariant embedded theta limited 
+    DGdegree = 1
+    u_form = 'vector_advection_form_'
+    u_transport = EmbeddedDGOptions()
+    transport_name = 'embedded'
+    limited = True
+
 perturbed = True
 if perturbed == True:
-    dirname = 'baroclinic_wave_'
+    dirname = 'baroclinic_wave'
 else: 
-    dirname = 'baroclinic_sbr_'
+    dirname = 'baroclinic_sbr'
 
-u_form = 'vector_advection_form'
-dirname = f'{dirname}{u_form}_'
+dirname = f'{dirname}_{u_form}_{transport_name}'
+if limited:
+    dirname = f'{dirname}_limited' 
+if DGdegree == 0:
+    dirname = f'lowest_order_{dirname}'
 
 variable_height = False
-limit_theta = False
-if limit_theta:
-    dirname = f'{dirname}theta_limited_'
+if variable_height:
+    dirname = f'{dirname}_varied_height'
+
+# function for building lowest order function spaces
+def buildUrecoverySpaces(mesh, degree):
+    # horizontal base spaces
+    hdiv_family = "RTCF" 
+    hcurl_family = "RTCE"
+
+    cell = mesh._base_mesh.ufl_cell().cellname()
+    u_div_hori = FiniteElement(hdiv_family, cell, degree + 1)
+    w_div_hori = FiniteElement("DG", cell, degree)
+    u_curl_hori = FiniteElement(hcurl_family, cell, degree+1)
+    w_curl_hori = FiniteElement("CG", cell, degree + 1)
+
+    # vertical base spaces
+    u_div_vert = FiniteElement("DG", interval, degree)
+    w_div_vert = FiniteElement("CG", interval, degree + 1)
+    u_curl_vert = FiniteElement("CG", interval, degree + 1)
+    w_curl_vert = FiniteElement("DG", interval, degree)
+
+    # build elements
+    u_div_element = HDiv(TensorProductElement(u_div_hori, u_div_vert))
+    w_div_element = HDiv(TensorProductElement(w_div_hori, w_div_vert))
+    u_curl_element = HCurl(TensorProductElement(u_curl_hori, u_curl_vert))
+    w_curl_element = HCurl(TensorProductElement(w_curl_hori, w_curl_vert))
+    hdiv_element = u_div_element + w_div_element
+    hcurl_element = u_curl_element + w_curl_element
+
+    VHDiv = FunctionSpace(mesh, hdiv_element)
+    VHCurl = FunctionSpace(mesh, hcurl_element)
+
+    return VHDiv, VHCurl
 
 # -------------------------------------------------------------- #
 # Set up Model
@@ -35,7 +123,6 @@ if limit_theta:
 # Domain
 a = 6.371229e6  # radius of earth
 ztop = 3.0e4  # max height
-nlayers = int(ztop/deltaz) 
 
 if variable_height == True: 
     dirname = f'{dirname}variable_height_'
@@ -54,7 +141,7 @@ else:
 m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
 lat, lon = latlon_coords(mesh)
-domain = Domain(mesh, dt, "RTCF", degree=1)
+domain = Domain(mesh, dt, "RTCF", degree=DGdegree)
 
 # Equations
 params = CompressibleParameters()
@@ -66,7 +153,7 @@ print(eqn.X.function_space().dim())
 
 dirname = f'{dirname}dt={dt}_n={n}'
 output = OutputParameters(dirname=dirname,
-                          dumpfreq=20,
+                          dumpfreq=40,
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
@@ -76,23 +163,62 @@ diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport Schemes 
-if limit_theta:
-    Vtheta = domain.spaces("theta")
-    limiter = ThetaLimiter(Vtheta)
-    options=EmbeddedDGOptions()
+
+if DGdegree == 0:
+
+    if limited:
+        Vtheta = domain.spaces("theta")
+        limiter = DG1Limiter(Vtheta)
+    else:
+        limiter = False
+        
+    VDG1 = domain.spaces('DG1_equispaced')
+    VCG1 = FunctionSpace(mesh, 'CG', 1)
+    VHDiv1, VHcurl = buildUrecoverySpaces(mesh, 1)
+    VHDiv0, VHcurl0 = buildUrecoverySpaces(mesh, 0)
+
+
+    u_opts = RecoveryOptions(embedding_space=VHDiv1,
+                            recovered_space=VHcurl0,
+                            boundary_method=BoundaryMethod.hcurl, # try on 1 if doesnt work
+                            injection_method = 'project',
+                            project_high_method = 'project',
+                            broken_method='project') 
+
+    rho_opts = RecoveryOptions(embedding_space=VDG1,
+                            recovered_space=VCG1,
+                            boundary_method=BoundaryMethod.extruded)
+
+    theta_opts = RecoveryOptions(embedding_space=VDG1,
+                                recovered_space=VCG1)
+    
+    transported_fields = []
+    transported_fields.append(SSPRK3(domain, "u", options=u_opts))
+    transported_fields.append(SSPRK3(domain, "rho", options=rho_opts))
+    transported_fields.append(SSPRK3(domain, "theta", options=theta_opts, limiter=limiter))
+
+    transport_methods = [DGUpwind(eqn, 'u'),
+                        DGUpwind(eqn, 'rho'),
+                        DGUpwind(eqn, 'theta')]
 else:
-    limiter = None 
-    options = SUPGOptions()   
+    if limited:
+        Vtheta = domain.spaces("theta")
+        limiter = ThetaLimiter(Vtheta)
+    else:
+        limiter = False
 
-transport_option=SUPGOptions()
-transported_fields = []
-transported_fields.append(TrapeziumRule(domain, "u", options=transport_option))
-transported_fields.append(SSPRK3(domain, "rho"))
-transported_fields.append(SSPRK3(domain, "theta", options=transport_option))
+    if transport_option==SUPGOptions(): 
+        ibp_theta = transport_option.ibp
+    else:
+        ibp_theta = None
+    transported_fields = []
+    transported_fields.append(TrapeziumRule(domain, "u", options=SUPGOptions()))
+    transported_fields.append(SSPRK3(domain, "rho"))
+    transported_fields.append(SSPRK3(domain, "theta", options=transport_option), limiter=limiter)
 
-transport_methods = [DGUpwind(eqn, 'u'),
-                     DGUpwind(eqn, 'rho'),
-                     DGUpwind(eqn, 'theta', ibp=transport_option.ibp)]
+    transport_methods = [DGUpwind(eqn, 'u', ibp=SUPGOptions().ibp),
+                        DGUpwind(eqn, 'rho'),
+                        DGUpwind(eqn, 'theta', ibp=ibp_theta)]
 
 
 # Linear Solver
@@ -158,7 +284,13 @@ tao2_int = C * (r - a)  * exp(-((r-a) / (b*H))**2)
 # Variable fields
 Temp = (a / r)**2 * (tao1 - tao2 * ( s**k - (k / (k+2)) *s**(k+2)))**(-1)
 P_expr = p0 * exp(-g / Rd * tao1_int + g / Rd * tao2_int * (s**k - (k / (k+2)) *s**(k+2)))
-wind = ((g*k) / (2 * omega * a)) * (cos(lat)**(k-1) - cos(lat)**(k+1))*tao2_int*Temp
+
+# wind expression
+wind_proxy = (g / a) * Temp * tao2_int * (((r * cos(lat)) / a)**(k-1) - ((r * cos(lat)) / a)**(k+1))
+wind = -omega * r * cos(lat) + sqrt((omega * r * cos(lat))**2 + r * cos(lat) * wind_proxy )
+
+
+approx_wind = ((g*k) / (2 * omega * a)) * (cos(lat)**(k-1) - cos(lat)**(k+1))*tao2_int*Temp
 
 theta_expr = Temp * (P_expr / p0) ** (-params.kappa) 
 pie_expr = Temp / theta_expr
