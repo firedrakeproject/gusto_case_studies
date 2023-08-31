@@ -11,13 +11,13 @@ import sys
 # Test case parameters
 # ---------------------------------------------------------------------------- #
 
-dt = 60.                       # 1 mins
+dt = 120.                      # 1 mins
 tmax = 5*24*60*60              # End time
 Lx = 1e6                       # Domain length in x direction
 Ly = 1e6                       # Domain length in y direction
 nx = 200                       # Number of cells in x direction
 ny = 200                       # Number of cells in y direction
-dumpfreq = int(tmax / (20*dt)) # Output dump frequency
+dumpfreq = int(tmax / (50*dt)) # Output dump frequency
 tau = 2.0*24*60*60             # Half life of source
 centre_x = 3 * Lx / 8.0        # x coordinate for volcano
 centre_y = 2 * Ly / 3.0        # y coordinate for volcano
@@ -55,7 +55,7 @@ output = OutputParameters(dirname=dirname,
                           dumplist=['ash'],
                           dump_nc=True,
                           dump_vtus=False)
-diagnostic_fields = [CourantNumber(), VelocityX(), VelocityY()]
+diagnostic_fields = [CourantNumber(), XComponent('u'), YComponent('u')]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes
