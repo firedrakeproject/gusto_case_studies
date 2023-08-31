@@ -7,6 +7,8 @@ from firedrake import (ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt,
 from gusto import *
 import gusto.thermodynamics as tde
 
+pick_up = ('--pick_up' in sys.argv)
+
 # ---------------------------------------------------------------------------- #
 # Script Options
 # ---------------------------------------------------------------------------- #
@@ -44,6 +46,14 @@ else:
     dirname += '_vector_advective'
 if variable_height:
     dirname += '_variable_height'
+
+output = OutputParameters(dirname=dirname,
+                          dumpfreq=dumpfreq,
+                          chkptfreq=dumpfreq,
+                          dump_nc=True,
+                          dump_vtus=False)
+
+mesh_name = 'gusto_mesh'
 
 # ---------------------------------------------------------------------------- #
 # Routine to make HDiv/HCurl spaces for velocity recovery
@@ -99,8 +109,12 @@ if variable_height == True:
 else:
     layerheight = ztop / nlayers
 
-m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=ncells, degree=2)
-mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
+if pick_up:
+    mesh = pick_up_mesh(output, mesh_name)
+else:
+    m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=ncells, degree=2)
+    mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial', name=mesh_name)
+
 xyz = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, "RTCF", degree=element_degree)
 
@@ -117,10 +131,6 @@ eqn = CompressibleEulerEquations(domain, params, Omega=Omega,
                                  u_transport_option=u_transport_option,
                                  active_tracers=active_tracers)
 
-output = OutputParameters(dirname=dirname,
-                          dumpfreq=dumpfreq,
-                          dump_nc=True,
-                          dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u', space=Vr),
                      ZonalComponent('u', space=Vr),
                      RadialComponent('u', space=Vr),
@@ -218,153 +228,160 @@ stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods,
 # Initial Conditions
 # ---------------------------------------------------------------------------- #
 
-# set up parameters
-Rd = params.R_d
-Rv = params.R_v
-cp = params.cp
-g = params.g
-p0 = Constant(100000)
-kappa = params.kappa
+if not pick_up:
+    # set up parameters
+    Rd = params.R_d
+    Rv = params.R_v
+    cp = params.cp
+    g = params.g
+    p0 = Constant(100000)
+    kappa = params.kappa
 
-X = 1.0        # Small-planet scaling factor (regular-size Earth)
-zt = 15000.    # Tropopause height
-q0 = 0.021     # Maximum specific humidity amplitude kg/kg
-qt = 1e-11     # Specific humidity in the upper atmosphere
-T0 = 302.15    # Surface temperature of the air
-Ts = 302.15    # Sea surface temperature
-zq1 = 3000.    # Height related to linear decrease of q with height
-zq2 = 8000.    # Height related to quadratic decrease of q with height
-Gamma = 0.007  # Virtual temperature lapse rate
-pb = 101500.   # Background surface pressure
-lat_c = pi/18  # Initial latitude of vortex centre
-lon_c = 0      # Initial longitude of vortex centre
-deltap = 1115. # Pressure perturbation at vortex center
-rp = 282000.   # Horizontal half-width of pressure perturbation
-zp = 7000.     # Height related to the vertical decay of pressure perturbation
-eps = 1e-25    # Small value threshold
+    X = 1.0        # Small-planet scaling factor (regular-size Earth)
+    zt = 15000.    # Tropopause height
+    q0 = 0.021     # Maximum specific humidity amplitude kg/kg
+    qt = 1e-11     # Specific humidity in the upper atmosphere
+    T0 = 302.15    # Surface temperature of the air
+    Ts = 302.15    # Sea surface temperature
+    zq1 = 3000.    # Height related to linear decrease of q with height
+    zq2 = 8000.    # Height related to quadratic decrease of q with height
+    Gamma = 0.007  # Virtual temperature lapse rate
+    pb = 101500.   # Background surface pressure
+    lat_c = pi/18  # Initial latitude of vortex centre
+    lon_c = 0      # Initial longitude of vortex centre
+    deltap = 1115. # Pressure perturbation at vortex center
+    rp = 282000.   # Horizontal half-width of pressure perturbation
+    zp = 7000.     # Height related to the vertical decay of pressure perturbation
+    eps = 1e-25    # Small value threshold
 
 
-u0 = stepper.fields("u")
-rho0 = stepper.fields("rho")
-theta0 = stepper.fields("theta")
-vapour0 = stepper.fields("water_vapour")
+    u0 = stepper.fields("u")
+    rho0 = stepper.fields("rho")
+    theta0 = stepper.fields("theta")
+    vapour0 = stepper.fields("water_vapour")
+
+    # ------------------------------------------------------------------------ #
+    # Base State
+    # ------------------------------------------------------------------------ #
+
+    lon, lat, radial_coord = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
+    z = radial_coord - a
+
+    # Specific humidity
+    q_expr = conditional(z < zt, q0*exp(-z/zq1)*exp(-(z/zq2)**2), qt)
+    mv_expr = q_expr / (1 - q_expr)
+    # Virtual temperature
+    mv0 = q0/(1-q0)
+    Tv0 = T0*(1 + Rv*mv0/Rd)
+    Tvt = Tv0 - Gamma*zt
+    Tvd_bar_expr = conditional(z < zt, Tv0 - Gamma*z, Tvt)
+    # Pressure
+    pt = pb*(Tvt/Tv0)**(g/(Rd*Gamma))
+    p_bar_expr = conditional(z < zt, pb*((Tv0 - Gamma*z)/Tv0)**(g/(Rd*Gamma)),
+                            pt*exp(g*(zt-z)/(Rd*Tvt)))
+
+    # Background state fields
+    # Set background pressure to use in diagnostics
+    pressure_b_Vt = stepper.fields('Pressure_Vt_bar', space=Vt, dump=True, pick_up=True)
+    exner_b = Function(Vr)
+    rho_b = Function(Vr)
+    thetavd_b = Function(Vt)
+    rho_b_Vt = Function(Vt)
+    boundary_method = BoundaryMethod.extruded if element_degree == 0 else None
+    rho_recoverer = Recoverer(rho_b, rho_b_Vt, boundary_method=boundary_method)
+
+    # Evaluate background states
+    thetavd_bar_expr = Tvd_bar_expr * (p0 / p_bar_expr) ** kappa
+    rho_bar_expr = p_bar_expr / (Rd*Tvd_bar_expr)
+    vapour0.interpolate(mv_expr)
+    thetavd_b.interpolate(thetavd_bar_expr)
+    # First guesses for rho and exner for hydrostatic balance solve
+    rho_b.interpolate(rho_bar_expr)
+    exner_b.interpolate(tde.exner_pressure(params, rho_b, thetavd_b))
+    # Ensure base state is in numerical hydrostatic balance
+    print('Compressible hydrostatic balance solve')
+    compressible_hydrostatic_balance(eqn, thetavd_b, rho_b, exner0=exner_b,
+                                    exner_boundary=exner_b, mr_t=vapour0,
+                                    solve_for_rho=True)
+    # Back out background pressure from prognostic variables
+    rho_recoverer.project()
+    exner_bar_expr = tde.exner_pressure(params, rho_b_Vt, thetavd_b)
+    pressure_b_Vt.interpolate(tde.p(params, exner_bar_expr))
+
+    # ------------------------------------------------------------------------ #
+    # Perturbation
+    # ------------------------------------------------------------------------ #
+
+    r = a * great_arc_angle(lon, lat, lon_c, lat_c)
+
+    # Pressure perturbation
+    p_pert_expr = conditional(z > zt, Constant(0.0),
+                            -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
+    p_expr = p_bar_expr + p_pert_expr
+    ### TODO: to remove (this diagnostic)
+    pressure_pert = stepper.fields('Pressure_Vt_raw_pert', space=Vr, dump=True, pick_up=True)
+    pressure_pert.interpolate(p_pert_expr)
+
+    # Temperature perturbation
+    Tvd_pert_expr = conditional(z > zt, Constant(0.0),
+                            (Tv0 - Gamma*z)*(-1 + 1 / (1 + 2*Rd*(Tv0-Gamma*z)*z
+                                                            /(g*zp**2*(1 - pb/deltap*exp((r/rp)**1.5 + (z/zp)**2))))))
+    Tvd_expr = Tvd_bar_expr + Tvd_pert_expr
+
+    # Wind field
+    fc = 2*omega*sin(lat_c)
+    tangent_u = conditional(z > zt, Constant(0.0),
+                            -fc*r/2 + sqrt((fc*r/2)**2
+                                        - 1.5*(r/rp)**1.5*(Tv0 - Gamma*z)*Rd
+                                        / (1 + 2*Rd*(Tv0-Gamma*z)*z/(g*zp**2)
+                                            - pb/deltap*exp((r/rp)**1.5+(z/zp)**2))))
+
+    d1 = sin(lat_c)*cos(lat) - cos(lat_c)*sin(lat)*cos(lon-lon_c)
+    d2 = cos(lat_c)*sin(lon-lon_c)
+    d = max_value(eps, sqrt(d1**2 + d2**2))
+    zonal_u = tangent_u*d1/d
+    meridional_u = tangent_u*d2/d
+
+    # Scalar prognostics: perturbations are made to base state
+    thetavd_expr = Tvd_expr * (p0 / p_expr) ** kappa
+    thetavd_pert_expr = thetavd_expr - thetavd_bar_expr
+    rho_expr = p_expr / (Rd*Tvd_expr)
+    rho_pert_expr = rho_expr - rho_bar_expr
+
+    # ------------------------------------------------------------------------ #
+    # Configuring fields
+    # ------------------------------------------------------------------------ #
+
+    e_lon_tuple = xyz_vector_from_lonlatr([Constant(1.0), Constant(0.0), Constant(0.0)], xyz)
+    e_lat_tuple = xyz_vector_from_lonlatr([Constant(0.0), Constant(1.0), Constant(0.0)], xyz)
+    e_lon = as_vector(e_lon_tuple)
+    e_lat = as_vector(e_lat_tuple)
+
+    # obtain initial conditions
+    print('Set up initial conditions')
+    print('project u')
+    test_u = TestFunction(Vu)
+    dx_reduced = dx(degree=4)
+    u_proj_eqn = inner(test_u, u0 - zonal_u*e_lon - meridional_u*e_lat)*dx_reduced
+    u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
+    u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
+    u_proj_solver.solve()
+    print('interpolate theta')
+    # Generate initial conditions for prognostics by adding perturbations to numerical base state
+    theta0.interpolate(thetavd_b + thetavd_pert_expr)
+    print('find rho')
+    rho0.interpolate(rho_b + rho_pert_expr)
+
+    print('make analytic rho')
+    rho_analytic = Function(Vr).interpolate(rho_expr)
+    print('Normalised rho error is:', errornorm(rho_analytic, rho0) / norm(rho_analytic))
+
+    # assign reference profiles
+    stepper.set_reference_profiles([('rho', rho_b),
+                                    ('theta', thetavd_b)])
+
 # ---------------------------------------------------------------------------- #
-# Base State
+# Run
 # ---------------------------------------------------------------------------- #
 
-lon, lat, radial_coord = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
-z = radial_coord - a
-
-# Specific humidity
-q_expr = conditional(z < zt, q0*exp(-z/zq1)*exp(-(z/zq2)**2), qt)
-mv_expr = q_expr / (1 - q_expr)
-# Virtual temperature
-mv0 = q0/(1-q0)
-Tv0 = T0*(1 + Rv*mv0/Rd)
-Tvt = Tv0 - Gamma*zt
-Tvd_bar_expr = conditional(z < zt, Tv0 - Gamma*z, Tvt)
-# Pressure
-pt = pb*(Tvt/Tv0)**(g/(Rd*Gamma))
-p_bar_expr = conditional(z < zt, pb*((Tv0 - Gamma*z)/Tv0)**(g/(Rd*Gamma)),
-                         pt*exp(g*(zt-z)/(Rd*Tvt)))
-
-# Background state fields
-# Set background pressure to use in diagnostics
-pressure_b_Vt = stepper.fields('Pressure_Vt_bar', space=Vt, dump=True, pick_up=True)
-exner_b = Function(Vr)
-rho_b = Function(Vr)
-thetavd_b = Function(Vt)
-rho_b_Vt = Function(Vt)
-boundary_method = BoundaryMethod.extruded if element_degree == 0 else None
-rho_recoverer = Recoverer(rho_b, rho_b_Vt, boundary_method=boundary_method)
-
-# Evaluate background states
-thetavd_bar_expr = Tvd_bar_expr * (p0 / p_bar_expr) ** kappa
-rho_bar_expr = p_bar_expr / (Rd*Tvd_bar_expr)
-vapour0.interpolate(mv_expr)
-thetavd_b.interpolate(thetavd_bar_expr)
-# First guesses for rho and exner for hydrostatic balance solve
-rho_b.interpolate(rho_bar_expr)
-exner_b.interpolate(tde.exner_pressure(params, rho_b, thetavd_b))
-# Ensure base state is in numerical hydrostatic balance
-print('Compressible hydrostatic balance solve')
-compressible_hydrostatic_balance(eqn, thetavd_b, rho_b, exner0=exner_b,
-                                 exner_boundary=exner_b, mr_t=vapour0,
-                                 solve_for_rho=True)
-# Back out background pressure from prognostic variables
-rho_recoverer.project()
-exner_bar_expr = tde.exner_pressure(params, rho_b_Vt, thetavd_b)
-pressure_b_Vt.interpolate(tde.p(params, exner_bar_expr))
-
-# ---------------------------------------------------------------------------- #
-# Perturbation
-# ---------------------------------------------------------------------------- #
-
-r = a * great_arc_angle(lon, lat, lon_c, lat_c)
-
-# Pressure perturbation
-p_pert_expr = conditional(z > zt, Constant(0.0),
-                          -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
-p_expr = p_bar_expr + p_pert_expr
-### TODO: to remove (this diagnostic)
-pressure_pert = stepper.fields('Pressure_Vt_raw_pert', space=Vr, dump=True, pick_up=True)
-pressure_pert.interpolate(p_pert_expr)
-
-# Temperature perturbation
-Tvd_pert_expr = conditional(z > zt, Constant(0.0),
-                           (Tv0 - Gamma*z)*(-1 + 1 / (1 + 2*Rd*(Tv0-Gamma*z)*z
-                                                          /(g*zp**2*(1 - pb/deltap*exp((r/rp)**1.5 + (z/zp)**2))))))
-Tvd_expr = Tvd_bar_expr + Tvd_pert_expr
-
-# Wind field
-fc = 2*omega*sin(lat_c)
-tangent_u = conditional(z > zt, Constant(0.0),
-                        -fc*r/2 + sqrt((fc*r/2)**2
-                                       - 1.5*(r/rp)**1.5*(Tv0 - Gamma*z)*Rd
-                                       / (1 + 2*Rd*(Tv0-Gamma*z)*z/(g*zp**2)
-                                          - pb/deltap*exp((r/rp)**1.5+(z/zp)**2))))
-
-d1 = sin(lat_c)*cos(lat) - cos(lat_c)*sin(lat)*cos(lon-lon_c)
-d2 = cos(lat_c)*sin(lon-lon_c)
-d = max_value(eps, sqrt(d1**2 + d2**2))
-zonal_u = tangent_u*d1/d
-meridional_u = tangent_u*d2/d
-
-# Scalar prognostics: perturbations are made to base state
-thetavd_expr = Tvd_expr * (p0 / p_expr) ** kappa
-thetavd_pert_expr = thetavd_expr - thetavd_bar_expr
-rho_expr = p_expr / (Rd*Tvd_expr)
-rho_pert_expr = rho_expr - rho_bar_expr
-
-# ---------------------------------------------------------------------------- #
-# Configuring fields
-# ---------------------------------------------------------------------------- #
-
-e_lon_tuple = xyz_vector_from_lonlatr([Constant(1.0), Constant(0.0), Constant(0.0)], xyz)
-e_lat_tuple = xyz_vector_from_lonlatr([Constant(0.0), Constant(1.0), Constant(0.0)], xyz)
-e_lon = as_vector(e_lon_tuple)
-e_lat = as_vector(e_lat_tuple)
-
-# obtain initial conditions
-print('Set up initial conditions')
-print('project u')
-test_u = TestFunction(Vu)
-dx_reduced = dx(degree=4)
-u_proj_eqn = inner(test_u, u0 - zonal_u*e_lon - meridional_u*e_lat)*dx_reduced
-u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
-u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
-u_proj_solver.solve()
-print('interpolate theta')
-# Generate initial conditions for prognostics by adding perturbations to numerical base state
-theta0.interpolate(thetavd_b + thetavd_pert_expr)
-print('find rho')
-rho0.interpolate(rho_b + rho_pert_expr)
-
-print('make analytic rho')
-rho_analytic = Function(Vr).interpolate(rho_expr)
-print('Normalised rho error is:', errornorm(rho_analytic, rho0) / norm(rho_analytic))
-
-# assign reference profiles
-stepper.set_reference_profiles([('rho', rho_b),
-                                ('theta', thetavd_b)])
-stepper.run(t=0, tmax=tmax)
+stepper.run(t=0, tmax=tmax, pick_up=pick_up)
