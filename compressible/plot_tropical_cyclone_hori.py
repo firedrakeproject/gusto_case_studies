@@ -15,7 +15,7 @@ from tomplot import (set_tomplot_style, tomplot_cmap,
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 # When copying this example these should not be relative to this file
-results_dir = '/home/thomas/firedrake/src/gusto/results/tropical_cyclone_dt1200_n11_degree1_vector_advective'
+results_dir = '/data/users/tbendall/results/tropical_cyclone'
 plot_dir = results_dir
 results_file_name = f'{results_dir}/field_output.nc'
 plot_stem = 'tropical_cyclone_hori'
@@ -25,7 +25,7 @@ plot_stem = 'tropical_cyclone_hori'
 # ---------------------------------------------------------------------------- #
 # Specify lists for variables that are different between subplots
 field_names = ['Pressure_Vt_perturbation', 'u']
-field_labels = [r'$p \ / $ Pa', r'$u \ / $ m s$^{-1}$']
+field_labels = [r"$p' \ / $ Pa", r'$|u| \ / $ m s$^{-1}$']
 colour_schemes = ['Blues_r', 'RdYlBu_r']
 all_contours = [np.linspace(-1100, 0, 12), np.linspace(0, 30, 11)]
 levels = [0, 0]
@@ -39,8 +39,8 @@ level = 0
 # Focus domain on an area
 xlabel = r'$\lambda \ / $ deg'
 ylabel = r'$\phi \ / $ deg'
-xlims = [-60, 60]  # [0, 20]
-ylims = [-60, 60]  # [-30, 30]
+xlims = [-20, 20]
+ylims = [-10, 30]
 # ---------------------------------------------------------------------------- #
 # Things that are likely the same for all plots
 # ---------------------------------------------------------------------------- #
@@ -112,7 +112,8 @@ for time_idx in time_idxs:
                                          contour_method, contours, cmap=cmap,
                                          plot_contour_lines=False)
             _ = plot_field_quivers(ax, coords_X, coords_Y,
-                                   field_data_X, field_data_Y)
+                                   field_data_X, field_data_Y,
+                                   magnitude_filter=2, scale=5)
 
         # -------------------------------------------------------------------- #
         # Scalar fields
