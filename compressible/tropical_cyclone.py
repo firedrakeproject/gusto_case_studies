@@ -6,6 +6,7 @@ from firedrake import (ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt,
                        max_value)
 from gusto import *
 import gusto.thermodynamics as tde
+import sys
 
 pick_up = ('--pick_up' in sys.argv)
 
