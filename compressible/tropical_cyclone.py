@@ -319,9 +319,6 @@ if not pick_up:
     p_pert_expr = conditional(z > zt, Constant(0.0),
                             -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
     p_expr = p_bar_expr + p_pert_expr
-    ### TODO: to remove (this diagnostic)
-    pressure_pert = stepper.fields('Pressure_Vt_raw_pert', space=Vr, dump=True, pick_up=True)
-    pressure_pert.interpolate(p_pert_expr)
 
     # Temperature perturbation
     Tvd_pert_expr = conditional(z > zt, Constant(0.0),
