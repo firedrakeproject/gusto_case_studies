@@ -69,7 +69,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "vertical_slice_nair_lauritzen_TEST"+case
+dirname = "vertical_slice_nair_lauritzen_diagtest"+case
 
 # Dump the solution at each day
 dumpfreq = int(100./dt)
@@ -82,7 +82,6 @@ output = OutputParameters(dirname=dirname,
 
 # Use a tracer density diagnostic to track conservation
 diagnostic_fields = [TracerDensity('m_X','rho_d')]
-#diagnostic_fields = [TracerDensity()]
 
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
