@@ -214,7 +214,7 @@ linear_solver = CompressibleSolver(eqn)
 # Physics
 T_surf = Constant(302.15)
 rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
-physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
+physics_schemes = [ # (Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
                    (Coalescence(eqn), ForwardEuler(domain)),
                    (EvaporationOfRain(eqn), ForwardEuler(domain)),
                    (SaturationAdjustment(eqn), ForwardEuler(domain)),
