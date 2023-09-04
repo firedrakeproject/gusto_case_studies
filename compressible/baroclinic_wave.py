@@ -51,21 +51,21 @@ elif config =='config5': # Vector advection embedded theta limited
 # Vector invariant options
 elif config =='config6': # vector invariant SUPG
     DGdegree = 1
-    u_form = 'vector_advection_form'
+    u_form = 'vector_invariant_form'
     u_transport = SUPGOptions()
     transport_name = 'SUPG'
     limited = False
 
 elif config =='config7': # vector invariant embedded not limited
     DGdegree = 1
-    u_form = 'vector_advection_form'
+    u_form = 'vector_invariant_form'
     u_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = False
 
 elif config =='config8': # vector invariant embedded theta limited 
     DGdegree = 1
-    u_form = 'vector_advection_form_'
+    u_form = 'vector_invariant_form_'
     u_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = True
