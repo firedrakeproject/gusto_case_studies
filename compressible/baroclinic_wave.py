@@ -15,7 +15,7 @@ nlayers = 5
 # --------------------------------------------------------------#
 # Configuratio Optionsn
 # -------------------------------------------------------------- #
-config = 'config3'
+config = 'config6'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -212,7 +212,7 @@ else:
         theta_ibp = theta_transport.ibp
     else:
         theta_ibp = None
-        
+
     if u_form == 'vector_invariant_form':
         u_transport_options=None
         u_ibp = None
@@ -221,14 +221,19 @@ else:
         u_ibp = u_transport_options.ibp
     
     transported_fields = []
-    transported_fields.append(TrapeziumRule(domain, "u", options=u_transport_options))
+    transport_methods = []
+    if u_form == 'vector_invariant_form':
+        transported_fields.append(TrapeziumRule(domain, "u"))
+        transport_methods.append(DGUpwind(eqn, 'u'))
+    else:
+        transported_fields.append(TrapeziumRule(domain, "u", options=u_transport_options))
+        transport_methods.append(DGUpwind(eqn, 'u', ibp=u_ibp))
+    
     transported_fields.append(SSPRK3(domain, "rho"))
     transported_fields.append(SSPRK3(domain, "theta", options=theta_transport, limiter=limiter))
 
-    transport_methods = [DGUpwind(eqn, 'u', ibp=u_ibp),
-                        DGUpwind(eqn, 'rho'),
-                        DGUpwind(eqn, 'theta', ibp=theta_ibp)]
-
+    transport_methods.append(DGUpwind(eqn, 'rho'))
+    transport_methods.append(DGUpwind(eqn, 'theta', ibp=theta_ibp))
 
 # Linear Solver
 linear_solver = CompressibleSolver(eqn)
