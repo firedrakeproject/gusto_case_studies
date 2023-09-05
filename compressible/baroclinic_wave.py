@@ -208,17 +208,10 @@ else:
     else:
         limiter = None
 
-    if theta_transport==SUPGOptions(): 
+    if isinstance(theta_transport, SUPGOptions):
         theta_ibp = theta_transport.ibp
     else:
-        theta_ibp = None
-
-    if u_form == 'vector_invariant_form':
-        u_transport_options=None
-        u_ibp = None
-    else:
-        u_transport_options=SUPGOptions()
-        u_ibp = u_transport_options.ibp
+        theta_ibp = IntegrateByParts.ONCE
     
     transported_fields = []
     transport_methods = []
@@ -226,8 +219,8 @@ else:
         transported_fields.append(TrapeziumRule(domain, "u"))
         transport_methods.append(DGUpwind(eqn, 'u'))
     else:
-        transported_fields.append(TrapeziumRule(domain, "u", options=u_transport_options))
-        transport_methods.append(DGUpwind(eqn, 'u', ibp=u_ibp))
+        transported_fields.append(TrapeziumRule(domain, "u", options=SUPGOptions()))
+        transport_methods.append(DGUpwind(eqn, 'u', ibp=SUPGOptions().ibp))
     
     transported_fields.append(SSPRK3(domain, "rho"))
     transported_fields.append(SSPRK3(domain, "theta", options=theta_transport, limiter=limiter))
