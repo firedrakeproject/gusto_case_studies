@@ -15,59 +15,53 @@ nlayers = 5
 # --------------------------------------------------------------#
 # Configuratio Optionsn
 # -------------------------------------------------------------- #
-config = 'config1'
+config = 'config3'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
     u_form = 'vector_advection_form'
-    transport_option = 'recovered'
+    transport_name = 'recovered'
     limited = False
 
 elif config == 'config2': # lowest order theta limited
     DGdegree = 0
     u_form = 'vector_advection_form'
-    transport_option = 'recovered'
+    transport_name = 'recovered'
     limited = True
 # Vector advection form options
 elif config =='config3': # vector advection SUPG 
     DGdegree = 1
     u_form = 'vector_advection_form'
-    u_transport = SUPGOptions()
+    theta_transport = SUPGOptions()
     transport_name = 'SUPG'
     limited = False
 
 elif config =='config4': # Vector advection embedded not limited
     DGdegree = 1
     u_form = 'vector_advection_form' 
-    u_transport = EmbeddedDGOptions()
+    theta_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = False
 
 elif config =='config5': # Vector advection embedded theta limited
     DGdegree = 1
     u_form = 'vector_advection_form'
-    u_transport = EmbeddedDGOptions()
+    theta_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = True
 # Vector invariant options
-elif config =='config6': # vector invariant SUPG
-    DGdegree = 1
-    u_form = 'vector_invariant_form'
-    u_transport = SUPGOptions()
-    transport_name = 'SUPG'
-    limited = False
 
-elif config =='config7': # vector invariant embedded not limited
+elif config =='config6': # vector invariant embedded not limited
     DGdegree = 1
     u_form = 'vector_invariant_form'
-    u_transport = EmbeddedDGOptions()
+    theta_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = False
 
-elif config =='config8': # vector invariant embedded theta limited 
+elif config =='config7': # vector invariant embedded theta limited 
     DGdegree = 1
     u_form = 'vector_invariant_form'
-    u_transport = EmbeddedDGOptions()
+    theta_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = True
 
@@ -206,20 +200,27 @@ else:
         Vtheta = domain.spaces("theta")
         limiter = ThetaLimiter(Vtheta)
     else:
-        limiter = False
+        limiter = None
 
-    if transport_option==SUPGOptions(): 
-        ibp_theta = transport_option.ibp
+    if theta_transport==SUPGOptions(): 
+        theta_ibp = theta_transport.ibp
     else:
-        ibp_theta = None
+        theta_ibp = None
+    if u_form == 'vector_invariant_form':
+        u_transport_options=None
+        u_ibp = None
+    else:
+        u_transport_options=SUPGOptions()
+        u_ibp = u_transport_options.ibp
+    
     transported_fields = []
-    transported_fields.append(TrapeziumRule(domain, "u", options=SUPGOptions()))
+    transported_fields.append(TrapeziumRule(domain, "u", options=u_transport_options))
     transported_fields.append(SSPRK3(domain, "rho"))
-    transported_fields.append(SSPRK3(domain, "theta", options=transport_option), limiter=limiter)
+    transported_fields.append(SSPRK3(domain, "theta", options=theta_transport, limiter=limiter))
 
-    transport_methods = [DGUpwind(eqn, 'u', ibp=SUPGOptions().ibp),
+    transport_methods = [DGUpwind(eqn, 'u', ibp=u_ibp),
                         DGUpwind(eqn, 'rho'),
-                        DGUpwind(eqn, 'theta', ibp=ibp_theta)]
+                        DGUpwind(eqn, 'theta', ibp=theta_ibp)]
 
 
 # Linear Solver
