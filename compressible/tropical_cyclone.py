@@ -13,10 +13,10 @@ pick_up = ('--pick_up' in sys.argv)
 # ---------------------------------------------------------------------------- #
 # Script Options
 # ---------------------------------------------------------------------------- #
-element_degree = 1
+element_degree = 0
 vector_invariant = False
 variable_height = False
-limit_theta = False
+limit_theta = True
 
 # ---------------------------------------------------------------------------- #
 # Test case Parameters
@@ -25,17 +25,15 @@ dt = 600.
 days = 10.
 tmax = days * 24. * 60. * 60.
 dumpfreq = int(tmax / (2*days*dt))
-ncells = 11
-nlayers = 5
 # For short simulations
 tmax = 24*60*60
 dumpfreq = int(tmax / (24*dt))
-ncells = 25
-nlayers = 15
+ncells = 47
+nlayers = 30
 # ---------------------------------------------------------------------------- #
 # Generate directory name to capture parameters
 # ---------------------------------------------------------------------------- #
-dirname = f'tropical_cyclone_dt{dt:.0f}_n{ncells}_degree{element_degree}'
+dirname = f'tropical_cyclone_dt{dt:.0f}_n{ncells}_degree{element_degree}_alpha51'
 
 if limit_theta:
     dirname = f'{dirname}_theta_limited'
@@ -97,13 +95,12 @@ a = 6.371229e6  # radius of earth
 ztop = 3.0e4  # max height
 
 if variable_height == True:
-    dirname = f'{dirname}variable_height_'
     layerheight=[]
     runningheight=0
     # Calculating Non-uniform height field
-    for n in range(1,16):
+    for n in range(1,nlayers):
         mu = 8
-        height = ztop * ((mu * (n / 15)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
+        height = ztop * ((mu * (n / nlayers)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
         width = height - runningheight
         runningheight = height
         layerheight.append(width)
@@ -160,7 +157,7 @@ if element_degree == 0:
                             project_high_method = 'project',
                             broken_method='project')
 
-    transport_schemes.append(TrapeziumRule(domain, "u", options=u_opts))
+    transport_schemes.append(SSPRK3(domain, "u", options=u_opts))
     transport_methods.append(DGUpwind(eqn, "u"))
 else:
     # SUPG, needs IBP specifying
@@ -214,7 +211,7 @@ linear_solver = CompressibleSolver(eqn)
 # Physics
 T_surf = Constant(302.15)
 rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
-physics_schemes = [ # (Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
+physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
                    (Coalescence(eqn), ForwardEuler(domain)),
                    (EvaporationOfRain(eqn), ForwardEuler(domain)),
                    (SaturationAdjustment(eqn), ForwardEuler(domain)),
@@ -222,7 +219,7 @@ physics_schemes = [ # (Fallout(eqn, 'rain', domain, rainfall_method, moments=Adv
                    (WindDrag(eqn, implicit_formulation=True), ForwardEuler(domain))]
 
 # Time Stepper
-stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods,
+stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods, alpha=0.51,
                                   linear_solver=linear_solver, physics_schemes=physics_schemes)
 
 # ---------------------------------------------------------------------------- #
@@ -300,7 +297,7 @@ if not pick_up:
     rho_b.interpolate(rho_bar_expr)
     exner_b.interpolate(tde.exner_pressure(params, rho_b, thetavd_b))
     # Ensure base state is in numerical hydrostatic balance
-    print('Compressible hydrostatic balance solve')
+    logger.info('Compressible hydrostatic balance solve')
     compressible_hydrostatic_balance(eqn, thetavd_b, rho_b, exner0=exner_b,
                                     exner_boundary=exner_b, mr_t=vapour0,
                                     solve_for_rho=True)
@@ -356,23 +353,23 @@ if not pick_up:
     e_lat = as_vector(e_lat_tuple)
 
     # obtain initial conditions
-    print('Set up initial conditions')
-    print('project u')
+    logger.info('Set up initial conditions')
+    logger.info('project u')
     test_u = TestFunction(Vu)
     dx_reduced = dx(degree=4)
     u_proj_eqn = inner(test_u, u0 - zonal_u*e_lon - meridional_u*e_lat)*dx_reduced
     u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
     u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
     u_proj_solver.solve()
-    print('interpolate theta')
+    logger.info('interpolate theta')
     # Generate initial conditions for prognostics by adding perturbations to numerical base state
     theta0.interpolate(thetavd_b + thetavd_pert_expr)
-    print('find rho')
+    logger.info('find rho')
     rho0.interpolate(rho_b + rho_pert_expr)
 
-    print('make analytic rho')
+    logger.info('make analytic rho')
     rho_analytic = Function(Vr).interpolate(rho_expr)
-    print('Normalised rho error is:', errornorm(rho_analytic, rho0) / norm(rho_analytic))
+    logger.info(f'Normalised rho error is: {errornorm(rho_analytic, rho0) / norm(rho_analytic)}')
 
     # assign reference profiles
     stepper.set_reference_profiles([('rho', rho_b),
