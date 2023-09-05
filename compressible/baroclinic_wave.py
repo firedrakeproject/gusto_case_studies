@@ -1,7 +1,8 @@
 from firedrake import (ExtrudedMesh, functionspaceimpl, TensorProductElement,
                        SpatialCoordinate, cos, sin, pi, sqrt, File, HDiv, HCurl,
                        exp, Constant, Function, as_vector, acos, interval,
-                       errornorm, norm, min_value, max_value, le, ge, FiniteElement)
+                       errornorm, norm, min_value, max_value, le, ge, FiniteElement,
+                       NonlinearVariationalProblem, NonlinearVariationalSolver)
 from gusto import *                                            #
 # -------------------------------------------------------------- #
 # Test case Parameters
@@ -256,12 +257,12 @@ H = Rd * T0 / g # scale height of atmosphere
 k = 3 # power of temp field
 b = 2 # half width parameter
 
-u = stepper.fields("u")
+u0 = stepper.fields("u")
 rho0 = stepper.fields("rho")
 theta0 = stepper.fields("theta")
 
 # spaces
-Vu = u.function_space()
+Vu = u0.function_space()
 Vr = rho0.function_space()
 Vt = theta0.function_space()
 
@@ -335,10 +336,19 @@ if perturbed == True:
 
 (u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
 
+
 # obtain initial conditions
 print('Set up initial conditions')
 print('project u')
-u.project(as_vector([u_expr, v_expr, w_expr]))
+test_u = TestFunction(Vu)
+dx_reduced = dx(degree=4)
+u_field = as_vector([u_expr, v_expr, w_expr])
+u_proj_eqn = inner(test_u,u0 - u_field)*dx_reduced
+u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
+u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
+u_proj_solver.solve()
+
+# u0.project(as_vector([u_expr, v_expr, w_expr]))
 print('interpolate theta')
 theta0.interpolate(theta_expr)
 print('find pi')
