@@ -4,18 +4,10 @@ from firedrake import (ExtrudedMesh, functionspaceimpl, TensorProductElement,
                        errornorm, norm, min_value, max_value, le, ge, FiniteElement,
                        NonlinearVariationalProblem, NonlinearVariationalSolver)
 from gusto import *                                            #
-# -------------------------------------------------------------- #
-# Test case Parameters
-# -------------------------------------------------------------- #
-dt = 270.
-days = 15.
-tmax = days * 24. * 60. * 60.
-n = 5     # cells per cubed sphere face edge
-nlayers = 5
 # --------------------------------------------------------------#
-# Configuratio Optionsn
+# Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config6'
+config = 'config8'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -70,8 +62,17 @@ elif config =='config8': # vector invariant embedded theta limited
     theta_transport = EmbeddedDGOptions()
     transport_name = 'embedded'
     limited = True
-
+# -------------------------------------------------------------- #
+# Script Options
+# -------------------------------------------------------------- #
+dt = 270.
+days = 15.
+tmax = days * 24. * 60. * 60.
+n = 5     # cells per cubed sphere face edge
+nlayers = 5 # vertical layers
+alpha = 0.51 # ratio between implicit and explict in solver
 perturbed = True
+
 if perturbed == True:
     dirname = 'baroclinic_wave'
 else: 
@@ -152,7 +153,7 @@ print('making eqn')
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
 print(eqn.X.function_space().dim())
 
-dirname = f'{dirname}dt={dt}_n={n}'
+dirname = f'{dirname}dt={dt}_n={n}_alpha={alpha}'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=40,
                           dump_nc=True,
@@ -229,12 +230,12 @@ else:
     transport_methods.append(DGUpwind(eqn, 'theta', ibp=theta_ibp))
 
 # Linear Solver
-linear_solver = CompressibleSolver(eqn)
+linear_solver = CompressibleSolver(eqn, alpha=alpha)
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
                                   transport_methods,
-                                  linear_solver=linear_solver)
+                                  linear_solver=linear_solver, alpha=alpha)
 
 # -------------------------------------------------------------- #
 # Initial Conditions
