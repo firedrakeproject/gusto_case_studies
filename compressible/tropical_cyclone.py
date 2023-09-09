@@ -3,7 +3,7 @@ from firedrake import (ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt,
                        errornorm, norm, NonlinearVariationalProblem,
                        NonlinearVariationalSolver, FiniteElement, HDiv, HCurl,
                        TensorProductElement, interval, VertexBasedLimiter,
-                       max_value)
+                       max_value, CubedSphereMesh)
 from gusto import *
 import gusto.thermodynamics as tde
 import sys
@@ -25,8 +25,9 @@ dt = 600.
 days = 10.
 tmax = days * 24. * 60. * 60.
 dumpfreq = int(tmax / (2*days*dt))
-ncells = 47
-nlayers = 30
+ncells = 32
+nlayers = 20
+ref_level = 5
 # For short simulations
 # tmax = 24*60*60
 # dumpfreq = int(tmax / (24*dt))
@@ -113,7 +114,8 @@ else:
 if pick_up:
     mesh = pick_up_mesh(output, mesh_name)
 else:
-    m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=ncells, degree=2)
+    # m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=ncells, degree=2)
+    m = CubedSphereMesh(a, ref_level, degree=2)
     mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial', name=mesh_name)
 
 xyz = SpatialCoordinate(mesh)
@@ -219,9 +221,7 @@ rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
 
 bl_mixing_theta = BoundaryLayerMixing(eqn, 'theta')
 bl_mixing_mv = BoundaryLayerMixing(eqn, 'water_vapour')
-fast_physics_schemes = [(bl_mixing_theta, BackwardEuler(domain)),
-                        (bl_mixing_mv, BackwardEuler(domain)),
-                        (SaturationAdjustment(eqn), ForwardEuler(domain)),
+fast_physics_schemes = [(StaticAdjustment(eqn), ForwardEuler(domain)),
                         (SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))]
 
 physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
@@ -229,7 +229,9 @@ physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=Advect
                    (EvaporationOfRain(eqn), ForwardEuler(domain)),
                    (SaturationAdjustment(eqn), ForwardEuler(domain)),
                    (SurfaceFluxes(eqn, T_surf, 'water_vapour', implicit_formulation=True), ForwardEuler(domain)),
-                   (WindDrag(eqn, implicit_formulation=True), ForwardEuler(domain))]
+                   (WindDrag(eqn, implicit_formulation=True), ForwardEuler(domain)),
+                   (bl_mixing_theta, BackwardEuler(domain)),
+                   (bl_mixing_mv, BackwardEuler(domain))]
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods,
@@ -291,7 +293,8 @@ if not pick_up:
     # Pressure
     pt = pb*(Tvt/Tv0)**(g/(Rd*Gamma))
     p_bar_expr = conditional(z < zt, pb*((Tv0 - Gamma*z)/Tv0)**(g/(Rd*Gamma)),
-                            pt*exp(g*(zt-z)/(Rd*Tvt)))
+                             pt*exp(g*(zt-z)/(Rd*Tvt)))
+    exner_boundary = Constant((pb / p0)**kappa)
 
     # Background state fields
     # Set background pressure to use in diagnostics
@@ -314,8 +317,8 @@ if not pick_up:
     # Ensure base state is in numerical hydrostatic balance
     logger.info('Compressible hydrostatic balance solve')
     compressible_hydrostatic_balance(eqn, thetavd_b, rho_b, exner0=exner_b,
-                                    exner_boundary=exner_b, mr_t=vapour0,
-                                    solve_for_rho=True)
+                                     exner_boundary=exner_boundary, mr_t=vapour0,
+                                     solve_for_rho=True)
     # Back out background pressure from prognostic variables
     rho_recoverer.project()
     exner_bar_expr = tde.exner_pressure(params, rho_b_Vt, thetavd_b)
@@ -331,6 +334,10 @@ if not pick_up:
     p_pert_expr = conditional(z > zt, Constant(0.0),
                             -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
     p_expr = p_bar_expr + p_pert_expr
+    exner0 = Function(Vr)
+    exner0.interpolate((p_expr / p0)**kappa)
+    # Make a copy of exner0 to use as the initial boundary condition
+    exner_boundary = Function(Vr).assign(exner0)
 
     # Temperature perturbation
     Tvd_pert_expr = conditional(z > zt, Constant(0.0),
@@ -379,8 +386,12 @@ if not pick_up:
     logger.info('interpolate theta')
     # Generate initial conditions for prognostics by adding perturbations to numerical base state
     theta0.interpolate(thetavd_b + thetavd_pert_expr)
-    logger.info('find rho')
-    rho0.interpolate(rho_b + rho_pert_expr)
+    # In theory here could get rho by interpolating expression
+    # rho0.interpolate(rho_b + rho_pert_expr)
+    logger.info('find rho: compressible hydrostatic balance')
+    compressible_hydrostatic_balance(eqn, theta0, rho0, exner0=exner0,
+                                     exner_boundary=exner_boundary, mr_t=vapour0,
+                                     solve_for_rho=True)
 
     logger.info('make analytic rho')
     rho_analytic = Function(Vr).interpolate(rho_expr)
