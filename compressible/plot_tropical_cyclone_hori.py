@@ -30,7 +30,7 @@ colour_schemes = ['Blues_r', 'RdYlBu_r']
 all_contours = [np.linspace(-1100, 0, 12), np.linspace(0, 30, 11)]
 levels = [0, 0]
 # Things that are the same for all subplots
-time_idxs = [-1]
+time_idxs = 'all'
 contour_method = 'tricontour'
 slice_at = 0.0
 slice_along = 'z'
@@ -46,6 +46,8 @@ ylims = [-10, 30]
 # ---------------------------------------------------------------------------- #
 set_tomplot_style()
 data_file = Dataset(results_file_name, 'r')
+if time_idxs == 'all':
+    time_idxs = range(len(data_file['time'][:]))
 
 # ---------------------------------------------------------------------------- #
 # Loop through time points
