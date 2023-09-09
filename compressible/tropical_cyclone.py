@@ -13,10 +13,10 @@ pick_up = ('--pick_up' in sys.argv)
 # ---------------------------------------------------------------------------- #
 # Script Options
 # ---------------------------------------------------------------------------- #
-element_degree = 1
+element_degree = 0
 vector_invariant = False
-variable_height = False
-limit_theta = False
+variable_height = True
+limit_theta = True
 
 # ---------------------------------------------------------------------------- #
 # Test case Parameters
@@ -25,13 +25,13 @@ dt = 600.
 days = 10.
 tmax = days * 24. * 60. * 60.
 dumpfreq = int(tmax / (2*days*dt))
-ncells = 11
-nlayers = 5
+ncells = 47
+nlayers = 30
 # For short simulations
-tmax = 24*60*60
-dumpfreq = int(tmax / (24*dt))
-ncells = 25
-nlayers = 15
+# tmax = 24*60*60
+# dumpfreq = int(tmax / (24*dt))
+# ncells = 11
+# nlayers = 5
 # ---------------------------------------------------------------------------- #
 # Generate directory name to capture parameters
 # ---------------------------------------------------------------------------- #
@@ -101,9 +101,9 @@ if variable_height == True:
     layerheight=[]
     runningheight=0
     # Calculating Non-uniform height field
-    for n in range(1,16):
+    for n in range(1,nlayers+1):
         mu = 8
-        height = ztop * ((mu * (n / 15)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
+        height = ztop * ((mu * (n / nlayers)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
         width = height - runningheight
         runningheight = height
         layerheight.append(width)
@@ -146,6 +146,7 @@ io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 # Transport options
 transport_schemes = []
 transport_methods = []
+max_courant = 0.8 if element_degree == 0 else 0.35
 
 # u transport
 if element_degree == 0:
@@ -154,13 +155,13 @@ if element_degree == 0:
     VHDiv0, VHcurl0 = buildUrecoverySpaces(mesh, 0)
 
     u_opts = RecoveryOptions(embedding_space=VHDiv1,
-                            recovered_space=VHcurl0,
-                            boundary_method=BoundaryMethod.hcurl,
-                            injection_method = 'project',
-                            project_high_method = 'project',
-                            broken_method='project')
+                             recovered_space=VHcurl0,
+                             boundary_method=BoundaryMethod.hcurl,
+                             injection_method = 'project',
+                             project_high_method = 'project',
+                             broken_method='project')
 
-    transport_schemes.append(TrapeziumRule(domain, "u", options=u_opts))
+    transport_schemes.append(SSPRK3(domain, "u", options=u_opts, subcycle_by=max_courant))
     transport_methods.append(DGUpwind(eqn, "u"))
 else:
     # SUPG, needs IBP specifying
@@ -179,13 +180,14 @@ if element_degree == 0:
 else:
     rho_opts = None
 
-transport_schemes.append(SSPRK3(domain, "rho", options=rho_opts))
+transport_schemes.append(SSPRK3(domain, "rho", options=rho_opts, subcycle_by=max_courant))
 transport_methods.append(DGUpwind(eqn, "rho"))
 
 # theta transport
 if element_degree == 0:
     theta_opts = RecoveryOptions(embedding_space=VDG1,
-                                 recovered_space=VCG1)
+                                 recovered_space=VCG1,
+                                 project_low_method='recover')
     if limit_theta:
         limiter = VertexBasedLimiter(VDG1)
     else:
@@ -203,10 +205,10 @@ transport_methods.append(DGUpwind(eqn, "theta"))
 transport_methods.append(DGUpwind(eqn, "water_vapour"))
 transport_methods.append(DGUpwind(eqn, "cloud_water"))
 transport_methods.append(DGUpwind(eqn, "rain"))
-transport_schemes.append(SSPRK3(domain, "theta", options=theta_opts, limiter=limiter))
-transport_schemes.append(SSPRK3(domain, "water_vapour", options=theta_opts, limiter=moisture_limiter))
-transport_schemes.append(SSPRK3(domain, "cloud_water", options=theta_opts, limiter=moisture_limiter))
-transport_schemes.append(SSPRK3(domain, "rain", options=theta_opts, limiter=moisture_limiter))
+transport_schemes.append(SSPRK3(domain, "theta", options=theta_opts, limiter=limiter, subcycle_by=max_courant))
+transport_schemes.append(SSPRK3(domain, "water_vapour", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
+transport_schemes.append(SSPRK3(domain, "cloud_water", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
+transport_schemes.append(SSPRK3(domain, "rain", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
 
 # Linear Solver
 linear_solver = CompressibleSolver(eqn)
@@ -214,7 +216,15 @@ linear_solver = CompressibleSolver(eqn)
 # Physics
 T_surf = Constant(302.15)
 rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
-physics_schemes = [ # (Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
+
+bl_mixing_theta = BoundaryLayerMixing(eqn, 'theta')
+bl_mixing_mv = BoundaryLayerMixing(eqn, 'water_vapour')
+fast_physics_schemes = [(bl_mixing_theta, BackwardEuler(domain)),
+                        (bl_mixing_mv, BackwardEuler(domain)),
+                        (SaturationAdjustment(eqn), ForwardEuler(domain)),
+                        (SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))]
+
+physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
                    (Coalescence(eqn), ForwardEuler(domain)),
                    (EvaporationOfRain(eqn), ForwardEuler(domain)),
                    (SaturationAdjustment(eqn), ForwardEuler(domain)),
@@ -223,7 +233,9 @@ physics_schemes = [ # (Fallout(eqn, 'rain', domain, rainfall_method, moments=Adv
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods,
-                                  linear_solver=linear_solver, physics_schemes=physics_schemes)
+                                  linear_solver=linear_solver,
+                                  fast_physics_schemes=fast_physics_schemes,
+                                  physics_schemes=physics_schemes)
 
 # ---------------------------------------------------------------------------- #
 # Initial Conditions
