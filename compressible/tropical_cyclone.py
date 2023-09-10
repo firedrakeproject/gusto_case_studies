@@ -15,29 +15,30 @@ pick_up = ('--pick_up' in sys.argv)
 # ---------------------------------------------------------------------------- #
 element_degree = 0
 vector_invariant = False
-variable_height = True
+variable_height = False
 limit_theta = True
+no_physics = True
 
 # ---------------------------------------------------------------------------- #
 # Test case Parameters
 # ---------------------------------------------------------------------------- #
 dt = 600.
-days = 10.
+days = 2.
 tmax = days * 24. * 60. * 60.
-dumpfreq = int(tmax / (2*days*dt))
+dumpfreq = int(tmax / (8*days*dt))
 ncells = 32
 nlayers = 20
 ref_level = 5
 # For short simulations
-# tmax = 24*60*60
-# dumpfreq = int(tmax / (24*dt))
+# tmax = 10*dt
+# dumpfreq = 1
 # ncells = 11
 # nlayers = 5
 
 # ---------------------------------------------------------------------------- #
 # Generate directory name to capture parameters
 # ---------------------------------------------------------------------------- #
-dirname = f'tropical_cyclone_dt{dt:.0f}_n{ncells}_degree{element_degree}_alpha51'
+dirname = f'tropical_cyclone_dt{dt:.0f}_n{ncells}_degree{element_degree}_alpha55'
 
 if limit_theta:
     dirname = f'{dirname}_theta_limited'
@@ -49,7 +50,9 @@ else:
     dirname += '_vector_advective'
 if variable_height:
     dirname += '_variable_height'
-
+if no_physics:
+    dirname += '_no_physics'
+    
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
                           chkptfreq=dumpfreq,
@@ -129,7 +132,10 @@ Vt = domain.spaces('theta')
 params = CompressibleParameters()
 omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
-active_tracers = [WaterVapour(), CloudWater(), Rain()]
+if no_physics:
+    active_tracers = [WaterVapour()]
+else:
+    active_tracers = [WaterVapour(), CloudWater(), Rain()]
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega,
                                  u_transport_option=u_transport_option,
                                  active_tracers=active_tracers)
@@ -205,37 +211,46 @@ else:
 
 transport_methods.append(DGUpwind(eqn, "theta"))
 transport_methods.append(DGUpwind(eqn, "water_vapour"))
-transport_methods.append(DGUpwind(eqn, "cloud_water"))
-transport_methods.append(DGUpwind(eqn, "rain"))
+if not no_physics:
+    transport_methods.append(DGUpwind(eqn, "cloud_water"))
+    transport_methods.append(DGUpwind(eqn, "rain"))
 transport_schemes.append(SSPRK3(domain, "theta", options=theta_opts, limiter=limiter, subcycle_by=max_courant))
 transport_schemes.append(SSPRK3(domain, "water_vapour", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
-transport_schemes.append(SSPRK3(domain, "cloud_water", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
-transport_schemes.append(SSPRK3(domain, "rain", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
+if not no_physics:
+    transport_schemes.append(SSPRK3(domain, "cloud_water", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
+    transport_schemes.append(SSPRK3(domain, "rain", options=theta_opts, limiter=moisture_limiter, subcycle_by=max_courant))
 
 # Linear Solver
 linear_solver = CompressibleSolver(eqn)
 
 # Physics
-T_surf = Constant(302.15)
-rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
+if not no_physics:
+    T_surf = Constant(302.15)
+    rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
 
-bl_mixing_theta = BoundaryLayerMixing(eqn, 'theta')
-bl_mixing_mv = BoundaryLayerMixing(eqn, 'water_vapour')
-fast_physics_schemes = [(StaticAdjustment(eqn), ForwardEuler(domain)),
-                        (SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))]
+if no_physics:
+    fast_physics_schemes = None
+    physics_schemes = None
+else:
+    bl_mixing_theta = BoundaryLayerMixing(eqn, 'theta')
+    bl_mixing_mv = BoundaryLayerMixing(eqn, 'water_vapour')
+    fast_physics_schemes = [(StaticAdjustment(eqn), ForwardEuler(domain)),
+                            #(SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))
+    ]
 
-physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
-                   (Coalescence(eqn), ForwardEuler(domain)),
-                   (EvaporationOfRain(eqn), ForwardEuler(domain)),
-                   (SaturationAdjustment(eqn), ForwardEuler(domain)),
-                   (SurfaceFluxes(eqn, T_surf, 'water_vapour', implicit_formulation=True), ForwardEuler(domain)),
-                   (WindDrag(eqn, implicit_formulation=True), ForwardEuler(domain)),
-                   (bl_mixing_theta, BackwardEuler(domain)),
-                   (bl_mixing_mv, BackwardEuler(domain))]
+    physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
+                       (Coalescence(eqn), ForwardEuler(domain)),
+                       (EvaporationOfRain(eqn), ForwardEuler(domain)),
+                       (SaturationAdjustment(eqn), ForwardEuler(domain)),
+                       (SurfaceFluxes(eqn, T_surf, 'water_vapour', implicit_formulation=True), ForwardEuler(domain)),
+                       (WindDrag(eqn, implicit_formulation=True), ForwardEuler(domain)),
+                       (bl_mixing_theta, BackwardEuler(domain)),
+                       (bl_mixing_mv, BackwardEuler(domain)),
+                       (SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))]
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods,
-                                  linear_solver=linear_solver, alpha=0.51,
+                                  linear_solver=linear_solver, alpha=0.55,
                                   fast_physics_schemes=fast_physics_schemes,
                                   physics_schemes=physics_schemes)
 
