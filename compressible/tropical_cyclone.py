@@ -138,10 +138,11 @@ diagnostic_fields = [MeridionalComponent('u', space=Vr),
                      ZonalComponent('u', space=Vr),
                      RadialComponent('u', space=Vr),
                      CourantNumber(),
-                     Temperature(eqn, space=Vt),
                      Pressure(eqn, space=Vt),
+                     Temperature(eqn, space=Vt),
                      Perturbation('Pressure_Vt'),
-                     Theta_d(eqn, space=Vt)]
+                     Theta_d(eqn, space=Vt),
+                     RelativeHumidity(eqn)]
 
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -332,17 +333,17 @@ if not pick_up:
 
     # Pressure perturbation
     p_pert_expr = conditional(z > zt, Constant(0.0),
-                            -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
+                              -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
     p_expr = p_bar_expr + p_pert_expr
     exner0 = Function(Vr)
     exner0.interpolate((p_expr / p0)**kappa)
     # Make a copy of exner0 to use as the initial boundary condition
-    exner_boundary = Function(Vr).assign(exner0)
+    exner_boundary = Function(Vt).interpolate((p_expr / p0)**kappa)
 
     # Temperature perturbation
     Tvd_pert_expr = conditional(z > zt, Constant(0.0),
-                            (Tv0 - Gamma*z)*(-1 + 1 / (1 + 2*Rd*(Tv0-Gamma*z)*z
-                                                            /(g*zp**2*(1 - pb/deltap*exp((r/rp)**1.5 + (z/zp)**2))))))
+                                (Tv0 - Gamma*z)*(-1 + 1 / (1 + 2*Rd*(Tv0-Gamma*z)*z
+                                / (g*zp**2*(1 - pb/deltap*exp((r/rp)**1.5 + (z/zp)**2))))))
     Tvd_expr = Tvd_bar_expr + Tvd_pert_expr
 
     # Wind field
