@@ -67,8 +67,7 @@ elif config =='config8': # vector invariant embedded theta limited
 # -------------------------------------------------------------- #
 dt = 900.
 days = 15.
-tmax = 900*20
-#tmax = days * 24. * 60. * 60.
+tmax = days * 24. * 60. * 60.
 n = 16     # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
@@ -154,10 +153,9 @@ print('making eqn')
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
-dirname = f'{dirname}dt={dt}_n={n}_alpha={alpha}'
-dirname = 'memoryleak_test'
+dirname = f'{dirname}dt={dt}_n={n}'
 output = OutputParameters(dirname=dirname,
-                          dumpfreq=1, 
+                          dumpfreq=12, # every 3 hours
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
