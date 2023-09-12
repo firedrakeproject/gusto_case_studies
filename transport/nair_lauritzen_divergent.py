@@ -13,6 +13,7 @@ from firedrake import (exp, cos, sin, conditional, SpatialCoordinate,
 # 3. slotted_cylinder - Slotted Cylinder (Non-smooth scalar field)
 
 scalar_case = 'slotted_cylinder'
+background_flow = True
 
 ######################
 
@@ -51,7 +52,7 @@ output = OutputParameters(dirname=dirname,
 io = IO(domain, output)
 
 # get lat lon coordinates
-lamda, theta = latlon_coords(mesh)
+theta, lamda = latlon_coords(mesh)
 
 # Specify locations of the two bumps
 theta_c1 = 0.0
@@ -108,14 +109,19 @@ elif scalar_case == 'slotted_cylinder':
 else:
   raise NotImplementedError('Scalar case specified has not been implemented')
 
-k = 5*R/T
-
 # Set up the divergent, time-varying, velocity field
-def u_t(t):
-  u_background = 2*pi*R/T
-  lamda_prime = lamda - u_background*t
-  u_zonal = u_background*cos(theta) - k*(sin(lamda_prime/2)**2)*sin(2*theta)*(cos(theta)**2)*cos(pi*t/T)
-  u_merid = 0.5*k*sin(lamda_prime)*(cos(theta)**3)*cos(pi*t/T)
+if background_flow:
+  k = 5*R/T
+  def u_t(t):
+    u_background = 2*pi*R/T
+    lamda_prime = lamda - u_background*t
+    u_zonal = u_background*cos(theta) - k*(sin(lamda_prime/2)**2)*sin(2*theta)*(cos(theta)**2)*cos(pi*t/T)
+    u_merid = 0.5*k*sin(lamda_prime)*(cos(theta)**3)*cos(pi*t/T)
+else:
+  k = 10*R/T
+  def u_t(t):
+    u_zonal = - k*(sin(lamda/2)**2)*sin(2*theta)*(cos(theta)**2)*cos(pi*t/T)
+    u_merid = k*sin(lamda)*(cos(theta)**3)*cos(pi*t/T)
 
   cartesian_u_expr = -u_zonal*sin(lamda) - u_merid*sin(theta)*cos(lamda)
   cartesian_v_expr = u_zonal*cos(lamda) - u_merid*sin(theta)*sin(lamda)
