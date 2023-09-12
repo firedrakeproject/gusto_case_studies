@@ -1,5 +1,5 @@
-from firedrake import (ExtrudedMesh, functionspaceimpl, TensorProductElement,
-                       SpatialCoordinate, cos, sin, pi, sqrt, File, HDiv, HCurl,
+from firedrake import (ExtrudedMesh,  TensorProductElement,
+                       SpatialCoordinate, cos, sin, pi, sqrt, HDiv, HCurl,
                        exp, Constant, Function, as_vector, acos, interval,
                        errornorm, norm, min_value, max_value, le, ge, FiniteElement,
                        NonlinearVariationalProblem, NonlinearVariationalSolver)
@@ -7,7 +7,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config8'
+config = 'config7'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -65,11 +65,12 @@ elif config =='config8': # vector invariant embedded theta limited
 # -------------------------------------------------------------- #
 # Script Options
 # -------------------------------------------------------------- #
-dt = 270.
+dt = 900.
 days = 15.
-tmax = days * 24. * 60. * 60.
-n = 5     # cells per cubed sphere face edge
-nlayers = 5 # vertical layers
+tmax = 900*20
+#tmax = days * 24. * 60. * 60.
+n = 16     # cells per cubed sphere face edge
+nlayers = 15 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
 perturbed = True
 
@@ -151,16 +152,17 @@ omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
 print('making eqn')    
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
-print(eqn.X.function_space().dim())
+print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
 dirname = f'{dirname}dt={dt}_n={n}_alpha={alpha}'
+dirname = 'memoryleak_test'
 output = OutputParameters(dirname=dirname,
-                          dumpfreq=40,
+                          dumpfreq=1, 
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
                      RadialComponent('u'), CourantNumber(), Temperature(eqn), Pressure(eqn), 
-                     SteadyStateError('Temperature'), SteadyStateError('Pressure_Vt')]
+                     SteadyStateError('Temperature'), SteadyStateError('Pressure_Vt'), Perturbation('Pressure_Vt')]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
