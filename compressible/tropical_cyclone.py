@@ -52,7 +52,7 @@ if variable_height:
     dirname += '_variable_height'
 if no_physics:
     dirname += '_no_physics'
-    
+
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
                           chkptfreq=dumpfreq,
@@ -144,10 +144,11 @@ diagnostic_fields = [MeridionalComponent('u', space=Vr),
                      ZonalComponent('u', space=Vr),
                      RadialComponent('u', space=Vr),
                      CourantNumber(),
-                     Temperature(eqn, space=Vt),
                      Pressure(eqn, space=Vt),
+                     Temperature(eqn, space=Vt),
                      Perturbation('Pressure_Vt'),
-                     Theta_d(eqn, space=Vt)]
+                     Theta_d(eqn, space=Vt),
+                     RelativeHumidity(eqn)]
 
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -224,19 +225,14 @@ if not no_physics:
 linear_solver = CompressibleSolver(eqn)
 
 # Physics
+T_surf = Constant(302.15)
 if not no_physics:
-    T_surf = Constant(302.15)
     rainfall_method = DGUpwind(eqn, 'rain', outflow=True)
 
-if no_physics:
-    fast_physics_schemes = None
-    physics_schemes = None
-else:
     bl_mixing_theta = BoundaryLayerMixing(eqn, 'theta')
     bl_mixing_mv = BoundaryLayerMixing(eqn, 'water_vapour')
     fast_physics_schemes = [(StaticAdjustment(eqn), ForwardEuler(domain)),
-                            #(SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))
-    ]
+                            (SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))]
 
     physics_schemes = [(Fallout(eqn, 'rain', domain, rainfall_method, moments=AdvectedMoments.M0), SSPRK3(domain)),
                        (Coalescence(eqn), ForwardEuler(domain)),
@@ -245,8 +241,11 @@ else:
                        (SurfaceFluxes(eqn, T_surf, 'water_vapour', implicit_formulation=True), ForwardEuler(domain)),
                        (WindDrag(eqn, implicit_formulation=True), ForwardEuler(domain)),
                        (bl_mixing_theta, BackwardEuler(domain)),
-                       (bl_mixing_mv, BackwardEuler(domain)),
-                       (SuppressVerticalWind(eqn, 2*60*60), ForwardEuler(domain))]
+                       (bl_mixing_mv, BackwardEuler(domain))]
+else:
+    fast_physics_schemes = []
+    physics_schemes = []
+
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transport_schemes, transport_methods,
@@ -347,17 +346,17 @@ if not pick_up:
 
     # Pressure perturbation
     p_pert_expr = conditional(z > zt, Constant(0.0),
-                            -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
+                              -deltap*exp(-(r/rp)**1.5-(z/zp)**2)*((Tv0-Gamma*z)/Tv0)**(g/(Rd*Gamma)))
     p_expr = p_bar_expr + p_pert_expr
     exner0 = Function(Vr)
     exner0.interpolate((p_expr / p0)**kappa)
     # Make a copy of exner0 to use as the initial boundary condition
-    exner_boundary = Function(Vr).assign(exner0)
+    exner_boundary = Function(Vt).interpolate((p_expr / p0)**kappa)
 
     # Temperature perturbation
     Tvd_pert_expr = conditional(z > zt, Constant(0.0),
-                            (Tv0 - Gamma*z)*(-1 + 1 / (1 + 2*Rd*(Tv0-Gamma*z)*z
-                                                            /(g*zp**2*(1 - pb/deltap*exp((r/rp)**1.5 + (z/zp)**2))))))
+                                (Tv0 - Gamma*z)*(-1 + 1 / (1 + 2*Rd*(Tv0-Gamma*z)*z
+                                / (g*zp**2*(1 - pb/deltap*exp((r/rp)**1.5 + (z/zp)**2))))))
     Tvd_expr = Tvd_bar_expr + Tvd_pert_expr
 
     # Wind field
