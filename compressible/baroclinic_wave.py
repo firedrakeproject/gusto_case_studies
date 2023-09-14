@@ -173,7 +173,7 @@ if DGdegree == 0:
         Vtheta = domain.spaces("theta")
         limiter = DG1Limiter(Vtheta)
     else:
-        limiter = False
+        limiter = None
         
     VDG1 = domain.spaces('DG1_equispaced')
     VCG1 = FunctionSpace(mesh, 'CG', 1)
