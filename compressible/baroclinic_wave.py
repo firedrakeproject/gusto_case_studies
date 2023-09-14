@@ -7,7 +7,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config7'
+config = 'config1'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -68,8 +68,8 @@ elif config =='config8': # vector invariant embedded theta limited
 dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 16     # cells per cubed sphere face edge
-nlayers = 15 # vertical layers
+n = 5     # cells per cubed sphere face edge
+nlayers = 5 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
 perturbed = True
 
@@ -160,7 +160,7 @@ output = OutputParameters(dirname=dirname,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
                      RadialComponent('u'), CourantNumber(), Temperature(eqn), Pressure(eqn), 
-                     SteadyStateError('Temperature'), SteadyStateError('Pressure_Vt'), Perturbation('Pressure_Vt')]
+                    SteadyStateError('Pressure_Vt'), Perturbation('Pressure_Vt')]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -268,6 +268,7 @@ u0 = stepper.fields("u")
 rho0 = stepper.fields("rho")
 theta0 = stepper.fields("theta")
 
+
 # spaces
 Vu = u0.function_space()
 Vr = rho0.function_space()
@@ -327,7 +328,6 @@ zonal_pert = conditional(le(d,err_tol), 0,
 meridional_pert = conditional(le(d,err_tol), 0, 
                               conditional(ge(d,d0-err_tol), 0, perturb_magnitude * cos(lat_c)*sin(lon - lon_c) / sin(d / a)))
 
-rho_expr = P_expr / (Rd * Temp)
 # -------------------------------------------------------------- #
 # Configuring fields
 # -------------------------------------------------------------- #
@@ -354,8 +354,11 @@ u_proj_eqn = inner(test_u,u0 - u_field)*dx_reduced
 u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
 u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
 u_proj_solver.solve()
+#
+# Just want to print the pressure field
+pres = stepper.fields('pressure_calced', space=Vr)
+pres.interpolate(P_expr)
 
-# u0.project(as_vector([u_expr, v_expr, w_expr]))
 print('interpolate theta')
 theta0.interpolate(theta_expr)
 print('find pi')
