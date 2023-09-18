@@ -7,7 +7,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config3'
+config = 'config2'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -169,16 +169,16 @@ io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 if DGdegree == 0:
 
-    if limited:
-        Vtheta = domain.spaces("theta")
-        limiter = DG1Limiter(Vtheta)
-    else:
-        limiter = None
+
         
     VDG1 = domain.spaces('DG1_equispaced')
     VCG1 = FunctionSpace(mesh, 'CG', 1)
     VHDiv1, VHcurl = buildUrecoverySpaces(mesh, 1)
     VHDiv0, VHcurl0 = buildUrecoverySpaces(mesh, 0)
+    if limited:
+        limiter = DG1Limiter(VDG1)
+    else:
+        limiter = None
 
 
     u_opts = RecoveryOptions(embedding_space=VHDiv1,
