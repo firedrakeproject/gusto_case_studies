@@ -68,8 +68,8 @@ elif config =='config8': # vector invariant embedded theta limited
 dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 18    # cells per cubed sphere face edge
-nlayers = 15 # vertical layers
+n = 32    # cells per cubed sphere face edge
+nlayers = 30 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
 perturbed = True
 variable_height = True
@@ -132,9 +132,9 @@ if variable_height == True:
     layerheight=[]
     runningheight=0
     # Calculating Non-uniform height field
-    for m in range(1,16):
+    for m in range(1,nlayers+1):
         mu = 8
-        height = ztop * ((mu * (m / 15)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
+        height = ztop * ((mu * (m / nlayers)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
         width = height - runningheight
         runningheight = height
         layerheight.append(width)
