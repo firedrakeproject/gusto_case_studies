@@ -7,7 +7,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config1'
+config = 'config2'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
