@@ -72,7 +72,7 @@ n = 16   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
 perturbed = True
-variable_height = False
+variable_height = True
 
 if perturbed == True:
     dirname = 'baroclinic_wave'
