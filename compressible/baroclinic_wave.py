@@ -7,7 +7,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config2'
+config = 'config5'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -68,11 +68,11 @@ elif config =='config8': # vector invariant embedded theta limited
 dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 32    # cells per cubed sphere face edge
-nlayers = 30 # vertical layers
+n = 16   # cells per cubed sphere face edge
+nlayers = 15 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
 perturbed = True
-variable_height = True
+variable_height = False
 
 if perturbed == True:
     dirname = 'baroclinic_wave'
@@ -128,7 +128,6 @@ a = 6.371229e6  # radius of earth
 ztop = 3.0e4  # max height
 
 if variable_height == True: 
-    dirname = f'{dirname}variable_height_'
     layerheight=[]
     runningheight=0
     # Calculating Non-uniform height field
