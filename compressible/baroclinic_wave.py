@@ -7,7 +7,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config6'
+config = 'config7'
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -68,11 +68,11 @@ elif config =='config8': # vector invariant embedded theta limited
 dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 16   # cells per cubed sphere face edge
-nlayers = 15 # vertical layers
+n = 5   # cells per cubed sphere face edge
+nlayers = 5 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
-perturbed = True
-variable_height = True
+perturbed = False
+variable_height = False
 
 if perturbed == True:
     dirname = 'baroclinic_wave'
@@ -168,8 +168,6 @@ io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 if DGdegree == 0:
 
-
-        
     VDG1 = domain.spaces('DG1_equispaced')
     VCG1 = FunctionSpace(mesh, 'CG', 1)
     VHDiv1, VHcurl = buildUrecoverySpaces(mesh, 1)
