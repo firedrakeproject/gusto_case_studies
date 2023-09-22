@@ -69,7 +69,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "vertical_slice_nair_lauritzen_diagtest"+case
+dirname = "vertical_slice_nair_lauritzen_"+case
 
 # Dump the solution at each day
 dumpfreq = int(100./dt)
