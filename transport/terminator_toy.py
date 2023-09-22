@@ -15,8 +15,8 @@ import numpy as np
 
 # Time parameters
 day = 24.*60.*60.
-dt = 300.
-tmax = 12*day
+dt = 900.
+tmax = 12*day # this is 1036800s
 
 # Radius of the Earth
 R = 6371220.
@@ -52,7 +52,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "terminator_toy"
+dirname = "terminator_toy_"
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -63,17 +63,22 @@ output = OutputParameters(dirname=dirname,
                           dump_nc = True,
                           dump_vtus = False)
                           
-io = IO(domain, output)
+X_plus_X2 = Sum('X', 'X2')
+X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2') 
+diagnostic_fields = [TracerDensity('X_plus_X2_plus_X2', 'rho_d)]
+                          
+io = IO(domain, output, diagnostic_fields = diagnostic_fields)
 
 # Define the reaction rates:
 theta_c = np.pi/9.
 lamda_c = -np.pi/3.
 
 k1 = max_value(0, sin(theta)*sin(theta_c) + cos(theta)*cos(theta_c)*cos(lamda-lamda_c))
-k2 = 1
+k2 = 1 + 0*theta
 
 physics_schemes = [(TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
                     species2_name='X2'), ForwardEuler(domain))]
+                    
 
 
 # Set up two Gaussian bumps for the initial density field
@@ -101,7 +106,15 @@ g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
 rho_expr = g1 + g2
 
 # Define the initial amounts of the species:
-X_T_0 = 4e-6
+X_T_0 = 0#4e-16
+
+#r = k1/(4*k2)
+
+#D_val = sqrt(r**2 + 2*X_T_0*r)
+
+#X_0 = D_val - r
+#X2_0 = 0.5*(X_T_0 - D_val - r)
+
 X_0 = X_T_0 + 0*theta
 X2_0 = 0*theta
 
