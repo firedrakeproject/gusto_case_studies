@@ -69,7 +69,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "vertical_slice_nair_lauritzen_diff_diags_"+case
+dirname = "vertical_slice_nair_lauritzen_"+case
 
 # Dump the solution at each day
 dumpfreq = int(100./dt)
@@ -81,14 +81,9 @@ output = OutputParameters(dirname=dirname,
                           dump_vtus = False)
 
 # Use a tracer density diagnostic to track conservation
-diagnostic_fields_interpolate = TracerDensity('m_X','rho_d',method='interpolate')
-diagnostic_fields_project = TracerDensity('m_X','rho_d',method='project')
-#diagnostic_fields_assign = TracerDensity('m_X','rho_d',method='assign')
-#diagnostic_fields_solve = TracerDensity('m_X','rho_d',method='solve')
+diagnostic_fields = [TracerDensity('m_X','rho_d')]
 
-diagnostic_fields_list = [diagnostic_fields_interpolate, diagnostic_fields_project] #diagnostic_fields_assign]#, diagnostic_fields_solve]
-
-io = IO(domain, output, diagnostic_fields=diagnostic_fields_list)
+io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Set up the divergent, time-varying, velocity field
 U = Lx/tmax
