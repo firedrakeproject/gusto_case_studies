@@ -65,9 +65,9 @@ output = OutputParameters(dirname=dirname,
                           
 X_plus_X2 = Sum('X', 'X2')
 X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2') 
-diagnostic_fields = [TracerDensity('X_plus_X2_plus_X2', 'rho_d)]
+tracer_diagnostic = TracerDensity('X_plus_X2_plus_X2', 'rho_d')
                           
-io = IO(domain, output, diagnostic_fields = diagnostic_fields)
+io = IO(domain, output, diagnostic_fields = [X_plus_X2, X_plus_X2_plus_X2, tracer_diagnostic])
 
 # Define the reaction rates:
 theta_c = np.pi/9.
@@ -78,8 +78,6 @@ k2 = 1 + 0*theta
 
 physics_schemes = [(TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
                     species2_name='X2'), ForwardEuler(domain))]
-                    
-
 
 # Set up two Gaussian bumps for the initial density field
 theta_c1 = 0.0
@@ -106,7 +104,7 @@ g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
 rho_expr = g1 + g2
 
 # Define the initial amounts of the species:
-X_T_0 = 0#4e-16
+X_T_0 = 4e-16
 
 #r = k1/(4*k2)
 
@@ -139,6 +137,7 @@ transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X
     
 # Time stepper
 stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
+                              physics_parametrisations=physics_schemes,
                               prescribed_transporting_velocity=u_t)
 
 # initial conditions
