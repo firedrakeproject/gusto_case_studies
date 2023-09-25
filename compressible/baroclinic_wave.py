@@ -1,3 +1,43 @@
+"""
+The deep atmosphere dry baroclinic wave Test case from Ullich et al. 2013 
+Script by Daniel Witt 
+Last Updated 25/09/2023
+
+7 Different configuration are provided for transport set up:
+
+Config 1: Lowest order finite element space, with vector advection form 
+          and no theta limiter
+Config 2: Lowest order finite element space with vector advection 
+          form and a DG1Limiter on theta
+Config 3: Next to lowest order space with vector advection form with SUPGOptions
+          for theta transport and no limiter
+Config 4: Next to lowest order space with vector advection form, EmbeddedDG for 
+          theta transport and no limiter
+Config 5: Next to lowest order space with vector advection form, EmbeddedDG for 
+          theta transport and a limiter on the theta field
+Config 6: Next to lowest order space with vector invariant form with SUPGOptions
+          for theta transport and no limiter
+Config 7: Next to lowest order space with vector invariant form, EmbeddedDG for 
+          theta transport and no limiter
+Config 8: Next to lowest order space with vector invariant form, EmbeddedDG for 
+          theta transport and a limiter on the theta field
+
+In addition to these configuration there are optional adjustments
+
+Perturbation:    Whether the baroclinic instability is present
+                 Default = True
+Variable height: Applies a non uniform height field.  
+                 Default = True
+Alpha:           Adjusts the ratio of implicit to explicit in the solver. 
+                 Default = 0.5
+
+
+
+"""
+
+
+
+
 from firedrake import (ExtrudedMesh,  TensorProductElement,
                        SpatialCoordinate, cos, sin, pi, sqrt, HDiv, HCurl,
                        exp, Constant, Function, as_vector, acos, interval,
@@ -7,7 +47,16 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config6'
+config = 'config5'
+dt = 900.
+days = 15.
+tmax = days * 24. * 60. * 60.
+n = 16   # cells per cubed sphere face edge
+nlayers = 15 # vertical layers
+alpha = 0.51 # ratio between implicit and explict in solver
+perturbed = True
+variable_height = True
+
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
     DGdegree = 0
@@ -65,14 +114,6 @@ elif config =='config8': # vector invariant embedded theta limited
 # -------------------------------------------------------------- #
 # Script Options
 # -------------------------------------------------------------- #
-dt = 900.
-days = 15.
-tmax = days * 24. * 60. * 60.
-n = 16   # cells per cubed sphere face edge
-nlayers = 15 # vertical layers
-alpha = 0.51 # ratio between implicit and explict in solver
-perturbed = True
-variable_height = True
 
 if perturbed == True:
     dirname = 'baroclinic_wave'
@@ -84,7 +125,6 @@ if limited:
     dirname = f'{dirname}_limited' 
 if DGdegree == 0:
     dirname = f'lowest_order_{dirname}'
-
 
 if variable_height:
     dirname = f'{dirname}_varied_height'
