@@ -24,8 +24,10 @@ Config 8: Next to lowest order space with vector invariant form, EmbeddedDG for
 
 In addition to these configuration there are optional adjustments
 
-Perturbation:    Whether the baroclinic instability is present
-                 Default = True
+Perturbation:    The properties of the perturbation
+                 None: No perturbation 
+                 single: Velocity perturbation in the upper mid lattitude
+                 double: Symetrical Perturbations in the N/S hemispheres
 Variable height: Applies a non uniform height field.  
                  Default = True
 Alpha:           Adjusts the ratio of implicit to explicit in the solver. 
@@ -47,15 +49,26 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config8'
+config = 'config1'
 dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
 n = 16   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
-alpha = 0.51 # ratio between implicit and explict in solver
-perturbed = True
+alpha = 0.50 # ratio between implicit and explict in solver
 variable_height = True
+perturbed = True
+perturbation = 'single'
+
+
+if perturbed:
+    if perturbation == 'single':
+        location = [(pi/9, 2*pi/9)]
+    elif perturbation == 'double':
+        location = [(pi/9, 2*pi/9), (pi/9, -2*pi/9)]
+    else:
+        raise ValueError('Please select a valid perturbation option')
+
 
 # Lowest Order Configs
 if config == 'config1':   # lowest order no limiter
@@ -115,19 +128,15 @@ elif config =='config8': # vector invariant embedded theta limited
 # Script Options
 # -------------------------------------------------------------- #
 
-if perturbed == True:
-    dirname = 'baroclinic_wave'
-else: 
-    dirname = 'baroclinic_sbr'
-
-dirname = f'{dirname}_{u_form}_{transport_name}'
-if limited:
-    dirname = f'{dirname}_limited' 
-if DGdegree == 0:
-    dirname = f'lowest_order_{dirname}'
+dirname = f'{config}_{perturbation}_wave_{u_form}_{transport_name}_n={n}_dt={dt}_a={alpha}'
 
 if variable_height:
     dirname = f'{dirname}_varied_height'
+
+if limited:
+    dirname = f'{dirname}_limited' 
+if not perturbed:
+    dirname = f'SBR_{config}_{u_form}_{transport_name}'
 
 # function for building lowest order function spaces
 def buildUrecoverySpaces(mesh, degree):
@@ -193,7 +202,6 @@ print('making eqn')
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
-dirname = f'{dirname}dt={dt}_n={n}'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=12, # every 3 hours
                           dump_nc=True,
@@ -347,24 +355,42 @@ rho_expr = P_expr / (Rd * Temp)
 # Perturbation
 # -------------------------------------------------------------- #
 
-zt = 1.5e4     # top of perturbation
-d0 = a / 6     # horizontal radius of perturbation
-Vp = 1         # Perturbed wind amplitude  
-lon_c , lat_c = pi/9,  2*pi/9 # location of perturbation centre   
-err_tol = 1e-12
 
-d = a * acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon - lon_c)) # distance from centre of perturbation
+def VelocityPerturbation(base_state, location, Vp=1):
+    '''
+    A function which applies a velocity perturbation in the zonal and merirdioanl velocity 
+    fields
+    args:
+        wind: The current velocity state : type: Tuple of zonal, meridional and radial fields
+        location: Location of perturbation: type: tuple of co-ordinates in lat / lon
+        r: Location vector
+    Optional: 
+        Vp: Maximum velocity of perturbation
+    '''
+    zt = 1.5e4     # top of perturbation
+    d0 = a / 6     # horizontal radius of perturbation
+    zonal_u, merid_u, _ = base_state
+    a = 6.371229e6   
+    err_tol = 1e-12
+    
+    for co_ords in location:
+        lon_c , lat_c = co_ords # location of perturbation centre
+        d = a * acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon - lon_c)) # distance from centre of perturbation
 
-depth = r - a # The distance from origin subtracted from earth radius
-zeta = conditional(ge(depth,zt-err_tol), 0, 1 - 3*(depth / zt)**2 + 2*(depth / zt)**3) # peturbation vertical taper
+        depth = r - a # The distance from origin subtracted from earth radius
+        zeta = conditional(ge(depth,zt-err_tol), 0, 1 - 3*(depth / zt)**2 + 2*(depth / zt)**3) # peturbation vertical taper
 
-perturb_magnitude = (16*Vp/(3*sqrt(3))) * zeta * sin((pi * d) / (2 * d0)) * cos((pi * d) / (2 * d0)) ** 3
+        perturb_magnitude = (16*Vp/(3*sqrt(3))) * zeta * sin((pi * d) / (2 * d0)) * cos((pi * d) / (2 * d0)) ** 3
 
 
-zonal_pert = conditional(le(d,err_tol), 0, 
-                         conditional(ge(d,(d0-err_tol)), 0, -perturb_magnitude * (-sin(lat_c)*cos(lat) + cos(lat_c)*sin(lat)*cos(lon - lon_c)) / sin(d / a)))
-meridional_pert = conditional(le(d,err_tol), 0, 
-                              conditional(ge(d,d0-err_tol), 0, perturb_magnitude * cos(lat_c)*sin(lon - lon_c) / sin(d / a)))
+        zonal_pert = conditional(le(d,err_tol), 0, 
+                                conditional(ge(d,(d0-err_tol)), 0, -perturb_magnitude * (-sin(lat_c)*cos(lat) + cos(lat_c)*sin(lat)*cos(lon - lon_c)) / sin(d / a)))
+        meridional_pert = conditional(le(d,err_tol), 0, 
+                                    conditional(ge(d,d0-err_tol), 0, perturb_magnitude * cos(lat_c)*sin(lon - lon_c) / sin(d / a)))
+
+        zonal_u = zonal_u + zonal_pert
+        merid_u = merid_u + meridional_pert
+    return (zonal_u, merid_u)
 
 # -------------------------------------------------------------- #
 # Configuring fields
@@ -375,9 +401,11 @@ zonal_u = wind
 merid_u = Constant(0.0) 
 radial_u = Constant(0.0)
 
+base_state = (zonal_u, merid_u, radial_u)
+
 if perturbed == True:
-    zonal_u = zonal_u + zonal_pert
-    merid_u = meridional_pert
+    zonal_u, merid_u, = VelocityPerturbation(base_state, location)
+
 
 (u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
 
@@ -392,10 +420,6 @@ u_proj_eqn = inner(test_u,u0 - u_field)*dx_reduced
 u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
 u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
 u_proj_solver.solve()
-#
-# Just want to print the pressure field
-pres = stepper.fields('pressure_calced', space=Vr)
-pres.interpolate(P_expr)
 
 print('interpolate theta')
 theta0.interpolate(theta_expr)
