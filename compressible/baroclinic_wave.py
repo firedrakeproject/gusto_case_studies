@@ -356,17 +356,23 @@ rho_expr = P_expr / (Rd * Temp)
 # -------------------------------------------------------------- #
 
 
-def VelocityPerturbation(base_state, location, Vp=1):
+def VelocityPerturbation(base_state, location, mesh, Vp=1):
     '''
     A function which applies a velocity perturbation in the zonal and merirdioanl velocity 
     fields
     args:
         wind: The current velocity state : type: Tuple of zonal, meridional and radial fields
         location: Location of perturbation: type: tuple of co-ordinates in lat / lon
+        mesh: requires the mesh to calculate lat, lon, r
         r: Location vector
     Optional: 
         Vp: Maximum velocity of perturbation
     '''
+
+    x, y, z = SpatialCoordinate(mesh)
+    lat, lon = latlon_coords(mesh)
+    r = sqrt(x**2 + y**2 + z**2)
+    a = 6.371229e6
     zt = 1.5e4     # top of perturbation
     d0 = a / 6     # horizontal radius of perturbation
     zonal_u, merid_u, _ = base_state
@@ -404,7 +410,7 @@ radial_u = Constant(0.0)
 base_state = (zonal_u, merid_u, radial_u)
 
 if perturbed == True:
-    zonal_u, merid_u, = VelocityPerturbation(base_state, location)
+    zonal_u, merid_u, = VelocityPerturbation(base_state, location, mesh)
 
 
 (u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
