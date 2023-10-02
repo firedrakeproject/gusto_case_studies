@@ -55,8 +55,8 @@ days = 15.
 tmax = days * 24. * 60. * 60.
 n = 16   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
-alpha = 0.50 # ratio between implicit and explict in solver
-variable_height = True
+alpha = 0.51 # ratio between implicit and explict in solver
+variable_height = False
 perturbed = True
 perturbation = 'single'
 
@@ -207,7 +207,7 @@ output = OutputParameters(dirname=dirname,
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
-                     RadialComponent('u'), CourantNumber(), Temperature(eqn), Pressure(eqn), 
+                     RadialComponent('u'), CourantNumber(), Temperature(eqn), Gradient('Temperature'), Pressure(eqn), 
                     SteadyStateError('Pressure_Vt'), Perturbation('Pressure_Vt')]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
