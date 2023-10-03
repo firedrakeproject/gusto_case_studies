@@ -56,7 +56,7 @@ tmax = days * 24. * 60. * 60.
 n = 16   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
-variable_height = False
+variable_height = True
 perturbed = True
 perturbation = 'single'
 
