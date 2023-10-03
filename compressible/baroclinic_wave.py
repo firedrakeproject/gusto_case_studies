@@ -86,7 +86,7 @@ elif config == 'config2': # lowest order theta limited
     limited = True
     n = n*2
     nlayers = nlayers*2
-    
+
 # Vector advection form options
 elif config =='config3': # vector advection SUPG 
     DGdegree = 1
@@ -211,9 +211,10 @@ output = OutputParameters(dirname=dirname,
                           dumpfreq=12, # every 3 hours
                           dump_nc=True,
                           dump_vtus=False)
-diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),
-                     RadialComponent('u'), CourantNumber(), Temperature(eqn), Gradient('Temperature'), Pressure(eqn), 
-                    SteadyStateError('Pressure_Vt'), Perturbation('Pressure_Vt')]
+diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),RadialComponent('u'),
+                    CourantNumber(), Temperature(eqn), Gradient('Temperature'), Pressure(eqn), 
+                    CompressibleKineticEnergy('u'), KineticEnergy('u'), 
+                    PotentialEnergy('u'), RelativeVorticity(domain) ]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
