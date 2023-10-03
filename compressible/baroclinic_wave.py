@@ -54,7 +54,7 @@ dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
 n = 16   # cells per cubed sphere face edge
-nlayers = 30 # vertical layers
+nlayers = 15 # vertical layers
 alpha = 0.51 # ratio between implicit and explict in solver
 variable_height = False
 perturbed = True
@@ -76,12 +76,17 @@ if config == 'config1':   # lowest order no limiter
     u_form = 'vector_advection_form'
     transport_name = 'recovered'
     limited = False
+    n = n*2
+    nlayers = nlayers*2
 
 elif config == 'config2': # lowest order theta limited
     DGdegree = 0
     u_form = 'vector_advection_form'
     transport_name = 'recovered'
     limited = True
+    n = n*2
+    nlayers = nlayers*2
+    
 # Vector advection form options
 elif config =='config3': # vector advection SUPG 
     DGdegree = 1
