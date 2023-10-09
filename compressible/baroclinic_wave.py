@@ -190,8 +190,8 @@ else:
 
 m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
-x = SpatialCoordinate(mesh)
-lat, lon, _ = lonlatr_from_xyz(x[0], x[1], x[2])
+x ,y, z= SpatialCoordinate(mesh)
+lat, lon, _ = lonlatr_from_xyz(x, y, z)
 domain = Domain(mesh, dt, "RTCF", degree=DGdegree)
 
 # Equations
