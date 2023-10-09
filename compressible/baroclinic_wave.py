@@ -32,13 +32,7 @@ Variable height: Applies a non uniform height field.
                  Default = True
 Alpha:           Adjusts the ratio of implicit to explicit in the solver. 
                  Default = 0.5
-
-
-
 """
-
-
-
 
 from firedrake import (ExtrudedMesh,  TensorProductElement,
                        SpatialCoordinate, cos, sin, pi, sqrt, HDiv, HCurl,
@@ -55,7 +49,7 @@ days = 15.
 tmax = days * 24. * 60. * 60.
 n = 16   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
-alpha = 0.51 # ratio between implicit and explict in solver
+alpha = 0.50 # ratio between implicit and explict in solver
 variable_height = True
 perturbed = True
 perturbation = 'single'
@@ -133,7 +127,7 @@ elif config =='config8': # vector invariant embedded theta limited
 # Script Options
 # -------------------------------------------------------------- #
 
-dirname = f'{config}_{perturbation}_wave_{u_form}_{transport_name}_n={n}_dt={dt}_a={alpha}'
+dirname = f'{config}_{perturbation}_wave_n={n}_dt={dt}'
 
 if variable_height:
     dirname = f'{dirname}_varied_height'
@@ -196,7 +190,8 @@ else:
 
 m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
-lat, lon = latlon_coords(mesh)
+x = SpatialCoordinate(mesh)
+lat, lon, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 domain = Domain(mesh, dt, "RTCF", degree=DGdegree)
 
 # Equations
@@ -212,7 +207,8 @@ output = OutputParameters(dirname=dirname,
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),RadialComponent('u'),
-                    CourantNumber(), Temperature(eqn), Gradient('Temperature'), Pressure(eqn)]
+                    CourantNumber(), Temperature(eqn), Gradient('Temperature'), Pressure(eqn),
+                    SteadyStateError('Pressure_Vt'), CompressibleKineticEnergy(), PotentialEnergy()]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -292,7 +288,7 @@ stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
 # -------------------------------------------------------------- #
 
 x, y, z = SpatialCoordinate(mesh)
-lat, lon = latlon_coords(mesh)
+lat, lon, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 r = sqrt(x**2 + y**2 + z**2)
 l = sqrt(x**2 + y**2)
 unsafe_x = x / l
@@ -374,7 +370,7 @@ def VelocityPerturbation(base_state, location, mesh, Vp=1):
     '''
 
     x, y, z = SpatialCoordinate(mesh)
-    lat, lon = latlon_coords(mesh)
+    lat, lon, _ = lonlatr_from_xyz(x[0], x[1], x[2])
     r = sqrt(x**2 + y**2 + z**2)
     a = 6.371229e6
     zt = 1.5e4     # top of perturbation
@@ -416,8 +412,7 @@ base_state = (zonal_u, merid_u, radial_u)
 if perturbed == True:
     zonal_u, merid_u, = VelocityPerturbation(base_state, location, mesh)
 
-
-(u_expr, v_expr, w_expr) = sphere_to_cartesian(mesh, zonal_u, merid_u)
+(u_expr, v_expr, w_expr) = xyz_from_lonlatr(zonal_u, merid_u, radial_u)
 
 
 # obtain initial conditions
