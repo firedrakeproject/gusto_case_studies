@@ -288,7 +288,7 @@ stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
 # -------------------------------------------------------------- #
 
 x, y, z = SpatialCoordinate(mesh)
-lat, lon, _ = lonlatr_from_xyz(x[0], x[1], x[2])
+lat, lon, _ = lonlatr_from_xyz(x, y, z)
 r = sqrt(x**2 + y**2 + z**2)
 l = sqrt(x**2 + y**2)
 unsafe_x = x / l
@@ -370,7 +370,7 @@ def VelocityPerturbation(base_state, location, mesh, Vp=1):
     '''
 
     x, y, z = SpatialCoordinate(mesh)
-    lat, lon, _ = lonlatr_from_xyz(x[0], x[1], x[2])
+    lat, lon, _ = lonlatr_from_xyz(x, y, z)
     r = sqrt(x**2 + y**2 + z**2)
     a = 6.371229e6
     zt = 1.5e4     # top of perturbation
