@@ -43,8 +43,8 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config4'
-dt = 900.
+config = 'config1'
+dt = 450.
 days = 15.
 tmax = days * 24. * 60. * 60.
 n = 24   # cells per cubed sphere face edge
@@ -203,7 +203,7 @@ eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
 output = OutputParameters(dirname=dirname,
-                          dumpfreq=12, # every 3 hours
+                          dumpfreq=24, # every 3 hours
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),RadialComponent('u'),
