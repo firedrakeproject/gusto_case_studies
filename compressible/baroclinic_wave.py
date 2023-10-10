@@ -65,7 +65,7 @@ if perturbed:
 
 
 # Lowest Order Configs
-if config == 'config1':   # lowest order no limiter
+if config == 'config4':   # lowest order no limiter
     DGdegree = 0
     u_form = 'vector_advection_form'
     transport_name = 'recovered'
