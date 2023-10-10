@@ -43,7 +43,7 @@ from gusto import *                                            #
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config1'
+config = 'config4'
 dt = 450.
 days = 15.
 tmax = days * 24. * 60. * 60.
@@ -65,7 +65,7 @@ if perturbed:
 
 
 # Lowest Order Configs
-if config == 'config4':   # lowest order no limiter
+if config == 'config1':   # lowest order no limiter
     DGdegree = 0
     u_form = 'vector_advection_form'
     transport_name = 'recovered'
