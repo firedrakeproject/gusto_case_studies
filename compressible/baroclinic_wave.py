@@ -47,7 +47,7 @@ config = 'config4'
 dt = 225.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 24   # cells per cubed sphere face edge
+n = 16   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 variable_height = True
@@ -128,6 +128,7 @@ elif config =='config8': # vector invariant embedded theta limited
 # -------------------------------------------------------------- #
 
 dirname = f'{config}_{perturbation}_wave_n={n}_dt={dt}'
+dirname = 'test'
 
 if variable_height:
     dirname = f'{dirname}_varied_height'
@@ -188,8 +189,8 @@ if variable_height == True:
 else: 
     layerheight = ztop / nlayers
 
-m = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
-mesh = ExtrudedMesh(m, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
+base_mesh = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
+mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
 x ,y, z= SpatialCoordinate(mesh)
 lat, lon, _ = lonlatr_from_xyz(x, y, z)
 domain = Domain(mesh, dt, "RTCF", degree=DGdegree)
@@ -289,8 +290,6 @@ stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
 # Initial Conditions
 # -------------------------------------------------------------- #
 
-x, y, z = SpatialCoordinate(mesh)
-lat, lon, _ = lonlatr_from_xyz(x, y, z)
 r = sqrt(x**2 + y**2 + z**2)
 l = sqrt(x**2 + y**2)
 unsafe_x = x / l
@@ -345,9 +344,6 @@ P_expr = p0 * exp(-g / Rd * tao1_int + g / Rd * tao2_int * (s**k - (k / (k+2)) *
 # wind expression
 wind_proxy = (g / a) * k * Temp * tao2_int * (((r * cos(lat)) / a)**(k-1) - ((r * cos(lat)) / a)**(k+1))
 wind = -omega * r * cos(lat) + sqrt((omega * r * cos(lat))**2 + r * cos(lat) * wind_proxy )
-
-
-approx_wind = ((g*k) / (2 * omega * a)) * (cos(lat)**(k-1) - cos(lat)**(k+1))*tao2_int*Temp
 
 theta_expr = Temp * (P_expr / p0) ** (-params.kappa) 
 pie_expr = Temp / theta_expr
