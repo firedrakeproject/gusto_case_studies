@@ -44,7 +44,7 @@ from gusto import *                                            #
 # Configuratio Options
 # -------------------------------------------------------------- #
 config = 'config4'
-dt = 225.
+dt = 900.
 days = 15.
 tmax = days * 24. * 60. * 60.
 n = 16   # cells per cubed sphere face edge
