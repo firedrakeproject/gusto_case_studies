@@ -44,10 +44,10 @@ from gusto import *                                            #
 # Configuratio Options
 # -------------------------------------------------------------- #
 config = 'config4'
-dt = 900.
+dt = 450.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 16   # cells per cubed sphere face edge
+n = 24   # cells per cubed sphere face edge
 nlayers = 15 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 variable_height = True
@@ -128,7 +128,6 @@ elif config =='config8': # vector invariant embedded theta limited
 # -------------------------------------------------------------- #
 
 dirname = f'{config}_{perturbation}_wave_n={n}_dt={dt}'
-dirname = 'test'
 
 if variable_height:
     dirname = f'{dirname}_varied_height'
@@ -192,7 +191,7 @@ else:
 base_mesh = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
 x ,y, z= SpatialCoordinate(mesh)
-lat, lon, _ = lonlatr_from_xyz(x, y, z)
+lon, lat, _ = lonlatr_from_xyz(x, y, z)
 domain = Domain(mesh, dt, "RTCF", degree=DGdegree)
 
 # Equations
@@ -368,7 +367,7 @@ def VelocityPerturbation(base_state, location, mesh, Vp=1):
     '''
 
     x, y, z = SpatialCoordinate(mesh)
-    lat, lon, _ = lonlatr_from_xyz(x, y, z)
+    lon, lat,  _ = lonlatr_from_xyz(x, y, z)
     r = sqrt(x**2 + y**2 + z**2)
     a = 6.371229e6
     zt = 1.5e4     # top of perturbation
