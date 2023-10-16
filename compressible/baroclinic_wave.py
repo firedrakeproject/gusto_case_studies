@@ -190,8 +190,8 @@ else:
 
 base_mesh = GeneralCubedSphereMesh(a, num_cells_per_edge_of_panel=n, degree=2)
 mesh = ExtrudedMesh(base_mesh, layers=nlayers, layer_height=layerheight, extrusion_type='radial')
-x ,y, z= SpatialCoordinate(mesh)
-lon, lat, _ = lonlatr_from_xyz(x, y, z)
+xyz= SpatialCoordinate(mesh)
+lon, lat, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
 domain = Domain(mesh, dt, "RTCF", degree=DGdegree)
 
 # Equations
@@ -288,7 +288,9 @@ stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
 # -------------------------------------------------------------- #
 # Initial Conditions
 # -------------------------------------------------------------- #
-
+x = xyz[0]
+y = xyz[1]
+z = xyz[2]
 r = sqrt(x**2 + y**2 + z**2)
 l = sqrt(x**2 + y**2)
 unsafe_x = x / l
@@ -366,9 +368,9 @@ def VelocityPerturbation(base_state, location, mesh, Vp=1):
         Vp: Maximum velocity of perturbation
     '''
 
-    x, y, z = SpatialCoordinate(mesh)
-    lon, lat,  _ = lonlatr_from_xyz(x, y, z)
-    r = sqrt(x**2 + y**2 + z**2)
+    xyz = SpatialCoordinate(mesh)
+    lon, lat,  _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
+    r = sqrt(xyz[0]**2 + xyz[1]**2 + xyz[2]**2)
     a = 6.371229e6
     zt = 1.5e4     # top of perturbation
     d0 = a / 6     # horizontal radius of perturbation
@@ -409,15 +411,17 @@ base_state = (zonal_u, merid_u, radial_u)
 if perturbed == True:
     zonal_u, merid_u, = VelocityPerturbation(base_state, location, mesh)
 
-(u_expr, v_expr, w_expr) = xyz_from_lonlatr(zonal_u, merid_u, radial_u)
-
+# Get spherical basis vectors, expressed in terms of thier (x,y,z) components:
+e_lon = xyz_vector_from_lonlatr(1, 0, 0, xyz)
+e_lat = xyz_vector_from_lonlatr(0, 1, 0, xyz)
+e_r = xyz_vector_from_lonlatr(0, 0, 1, xyz)
 
 # obtain initial conditions
 print('Set up initial conditions')
 print('project u')
 test_u = TestFunction(Vu)
 dx_reduced = dx(degree=4)
-u_field = as_vector([u_expr, v_expr, w_expr])
+u_field = zonal_u*e_lon + merid_u * e_lat + radial_u * e_r 
 u_proj_eqn = inner(test_u,u0 - u_field)*dx_reduced
 u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
 u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
