@@ -210,7 +210,7 @@ diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),RadialCompone
                     CourantNumber(), Temperature(eqn), Gradient('Temperature'), 
                     MeridionalComponent('Temperature_gradient'), ZonalComponent('Temperature_gradient'),
                     Pressure(eqn), SteadyStateError('Pressure_Vt'), 
-                    CompressibleKineticEnergy(), PotentialEnergy(eqn)]
+                    CompressibleKineticEnergy(), PotentialEnergy(eqn), InternalEnergy(eqn)]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
