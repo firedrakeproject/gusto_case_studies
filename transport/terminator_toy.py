@@ -25,10 +25,11 @@ R = 6371220.
 mesh = IcosahedralSphereMesh(radius=R,
                              refinement_level=5, degree=2)
                              
-# get lat lon coordinates
-theta, lamda = latlon_coords(mesh)
-
 x = SpatialCoordinate(mesh)
+
+# get lat lon coordinates
+theta, lamda, _ = lonlatr_from_xyz(x[0], x[1], x[2])
+
 domain = Domain(mesh, dt, 'BDM', 1)
 
 # Define the dry density and 
@@ -52,32 +53,37 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "terminator_toy_"
+dirname = "terminator_toy_testing"
 
 # Dump the solution at each day
-dumpfreq = int(day/dt)
+dumpfreq = 1.#int(day/dt)
 
 # Set dump_nc = True to use tomplot.
 output = OutputParameters(dirname=dirname,
                           dumpfreq = dumpfreq,
                           dump_nc = True,
-                          dump_vtus = False)
-                          
+                          dump_vtus = True)               
+                         
+X_twice = Sum('X', 'X')
+X2_twice = Sum('X2', 'X2')
 X_plus_X2 = Sum('X', 'X2')
 X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2') 
 tracer_diagnostic = TracerDensity('X_plus_X2_plus_X2', 'rho_d')
                           
-io = IO(domain, output, diagnostic_fields = [X_plus_X2, X_plus_X2_plus_X2, tracer_diagnostic])
+io = IO(domain, output, diagnostic_fields = [X_twice, X2_twice, X_plus_X2, X_plus_X2_plus_X2, tracer_diagnostic])
 
 # Define the reaction rates:
 theta_c = np.pi/9.
 lamda_c = -np.pi/3.
 
 k1 = max_value(0, sin(theta)*sin(theta_c) + cos(theta)*cos(theta_c)*cos(lamda-lamda_c))
-k2 = 1 + 0*theta
+k2 = 1# + 0*theta
 
-physics_schemes = [(TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
-                    species2_name='X2'), ForwardEuler(domain))]
+physics_parameterisations = [TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
+                    species2_name='X2')]
+
+#physics_schemes = [TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
+#                    species2_name='X2'), SSPRK3(domain)]
 
 # Set up two Gaussian bumps for the initial density field
 theta_c1 = 0.0
@@ -104,14 +110,14 @@ g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
 rho_expr = g1 + g2
 
 # Define the initial amounts of the species:
-X_T_0 = 4e-16
+X_T_0 = 4e-6
 
 #r = k1/(4*k2)
 
 #D_val = sqrt(r**2 + 2*X_T_0*r)
 
 #X_0 = D_val - r
-#X2_0 = 0.5*(X_T_0 - D_val - r)
+#X2_0 = 0.5*(X_T_0 - D_val + r)
 
 X_0 = X_T_0 + 0*theta
 X2_0 = 0*theta
@@ -130,15 +136,23 @@ def u_t(t):
   
   u_expr = as_vector((cartesian_u_expr, cartesian_v_expr, cartesian_w_expr))
   
-  return u_expr
+  #return u_expr
+  
+  # No flow test:
+  return Constant(0)*u_expr
 
-transport_scheme = SSPRK3(domain)
+
+#transport_scheme = SSPRK3(domain)
+transport_scheme = TrapeziumRule(domain)
 transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
     
 # Time stepper
 stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
-                              physics_parametrisations=physics_schemes,
+                              physics_parametrisations=physics_parameterisations,
                               prescribed_transporting_velocity=u_t)
+
+#stepper = SplitPhysicsTimestepper(eqn, transport_scheme, io,
+#                                      physics_schemes=physics_schemes)
 
 # initial conditions
 stepper.fields("rho_d").interpolate(rho_expr)
