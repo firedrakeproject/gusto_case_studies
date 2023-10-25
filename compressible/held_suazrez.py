@@ -163,10 +163,15 @@ Vt = theta0.function_space()
 
 # expressiosn for temperature forcing 
 exner = (p / p0) ** kappa
+
+# ------------------------------------------------------------------------------
+# Relxation condition
+# ------------------------------------------------------------------------------
+
 T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * log(p/p0) * cos(lat)**2) * (p / p0)**kappa
 Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
 sigma = p / p0
-tau_rad = conditional(ge(0, (sigma - simgab)))
+tau_rad = conditional(ge(0, (sigma - sigmab)))
 Forcing_potential = -(T - Teq) / (tau_rad * exner) 
-
+#------------------------
 
