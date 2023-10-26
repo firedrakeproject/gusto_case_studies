@@ -21,21 +21,22 @@ Alpha:           Adjusts the ratio of implicit to explicit in the solver.
                  Default = 0.5
 """
 
-from firedrake import (ExtrudedMesh,  TensorProductElement, log,
+from firedrake import (ExtrudedMesh,  TensorProductElement, ln,
                        SpatialCoordinate, cos, sin, pi, sqrt, HDiv, HCurl,
                        exp, Constant, Function, as_vector, acos, interval,
                        errornorm, norm, min_value, max_value, le, ge, FiniteElement,
                        NonlinearVariationalProblem, NonlinearVariationalSolver)
 from gusto import *                                            #
+
 # --------------------------------------------------------------#
 # Configuratio Options
 # -------------------------------------------------------------- #
-config = 'config7'
+config = 'config4'
 dt = 1200.
 days = 15.
 tmax = days * 24. * 60. * 60.
-n = 24   # cells per cubed sphere face edge
-nlayers = 15 # vertical layers
+n = 12  # cells per cubed sphere face edge
+nlayers = 5 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 
 # Lowest order vector advection
@@ -95,8 +96,7 @@ output = OutputParameters(dirname=dirname,
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),RadialComponent('u'),
-                    CourantNumber(), Temperature(eqn), Pressure(eqn), InternalEnergy(eqn),
-                    CompressibleKineticEnergy(), PotentialEnergy(eqn)]
+                    CourantNumber(), Temperature(eqn), Pressure(eqn)]
           
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -125,7 +125,7 @@ stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
                                   linear_solver=linear_solver, alpha=alpha)
 
 # -------------------------------------------------------------- #
-# Initial Conditions
+# Parameter
 # -------------------------------------------------------------- #
 x = xyz[0]
 y = xyz[1]
@@ -140,6 +140,8 @@ g = params.g
 p0 = Constant(100000)
 
 lapse = 0.005
+T0init = 300
+d = 24*60*60 # A day
 T0stra = 200 # Stratosphere temp
 T0surf = 315 # Surface temperature at equator
 T0horiz = 60 # Equator to pole temperature difference
@@ -148,11 +150,21 @@ k = 3
 H = Rd * T0surf / g # scale height of atmosphere
 b = 2 # half width parameter
 sigmab = 0.7
-
-# TEMP VALUES -----------------------------------------------------------
-p = 10 
-# -----------------------------------------------------------------------
-
+taod = 40 * d
+taou = 4 * d
+taofric = d 
+# -----------------------------------------------------------------------------
+# Background Profiles
+# -----------------------------------------------------------------------------
+s = (r / a) * cos(lat)
+A = 1 / lapse
+tao1 = A * lapse / T0init * exp((r - a)*lapse / T0init)
+tao1_int = A * (exp(lapse * (r - a) / T0init) - 1)
+P_expr = p0 * exp(-g / Rd * tao1_int)
+theta_expr = T0init * (P_expr / p0) ** (-params.kappa) 
+pie_expr = T0init / theta_expr
+exner = (P_expr / p0) ** (-params.kappa)
+rho_expr = P_expr / (Rd * T0init)
 # Spaces
 u0 = stepper.fields("u")
 rho0 = stepper.fields("rho")
@@ -160,18 +172,34 @@ theta0 = stepper.fields("theta")
 Vu = u0.function_space()
 Vr = rho0.function_space()
 Vt = theta0.function_space()
-
-# expressiosn for temperature forcing 
-exner = (p / p0) ** kappa
-
 # ------------------------------------------------------------------------------
 # Relxation condition
 # ------------------------------------------------------------------------------
 
-T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * log(p/p0) * cos(lat)**2) * (p / p0)**kappa
+# temperature
+T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * ln(P_expr/p0) * cos(lat)**2) * (P_expr / p0)**kappa
 Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
-sigma = p / p0
-tau_rad = conditional(ge(0, (sigma - sigmab)))
-Forcing_potential = -(T - Teq) / (tau_rad * exner) 
-#------------------------
+equilibrium_expr = Function(Vt).interpolate(exner * Teq)
+# timescale of temperature forcing
+sigma = P_expr / p0
+tao_cond = (sigma - sigmab) / (1 - sigmab)
+tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
+temp_coeff = exner * tau_rad_inverse
 
+print('Applying Temperature Relaxation')
+Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff)
+
+# ------------------------------------------------------------------------------
+# Field Initilisation
+# ------------------------------------------------------------------------------
+
+theta0.interpolate(theta_expr)
+pie = Function(Vr).interpolate(pie_expr)
+rho0.interpolate(rho_expr)
+compressible_hydrostatic_balance(eqn, theta0, rho0, exner_boundary = pie, solve_for_rho=True)
+rho_b = Function(Vr).assign(rho0)
+theta_b = Function(Vt).assign(theta0)
+stepper.set_reference_profiles([('rho', rho_b), 
+                                ('theta', theta_b)])
+print('Intialise Windy Boi')
+stepper.run(t=0, tmax=tmax)
