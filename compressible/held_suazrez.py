@@ -173,7 +173,7 @@ Vu = u0.function_space()
 Vr = rho0.function_space()
 Vt = theta0.function_space()
 # ------------------------------------------------------------------------------
-# Relxation condition
+# Relxation conditions
 # ------------------------------------------------------------------------------
 
 # temperature
@@ -185,10 +185,14 @@ sigma = P_expr / p0
 tao_cond = (sigma - sigmab) / (1 - sigmab)
 tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
 temp_coeff = exner * tau_rad_inverse
+# Velocity
+wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
+
 
 print('Applying Temperature Relaxation')
 Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff)
-
+print('Applying Velocity Relaxation')
+RayleighFriction(eqn, wind_timescale)
 # ------------------------------------------------------------------------------
 # Field Initilisation
 # ------------------------------------------------------------------------------
