@@ -33,7 +33,7 @@ from gusto import *                                            #
 # -------------------------------------------------------------- #
 config = 'config4'
 dt = 1200.
-days = 15.
+days = 200.
 tmax = days * 24. * 60. * 60.
 n = 12  # cells per cubed sphere face edge
 nlayers = 5 # vertical layers
