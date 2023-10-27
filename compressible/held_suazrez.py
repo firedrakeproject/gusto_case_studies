@@ -90,7 +90,7 @@ eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
 
-dirname = f'Held_suarez_temp_and_vel_tmax={days}days'
+dirname = f'Held_suarez_no_relaxation'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=9, # every 3 hours
                           dump_nc=True,
@@ -190,9 +190,9 @@ wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
 
 
 print('Applying Temperature Relaxation')
-Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff)
+#Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff)
 print('Applying Velocity Relaxation')
-RayleighFriction(eqn, wind_timescale)
+#RayleighFriction(eqn, wind_timescale)
 # ------------------------------------------------------------------------------
 # Field Initilisation
 # ------------------------------------------------------------------------------
