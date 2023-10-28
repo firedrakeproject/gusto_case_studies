@@ -15,7 +15,7 @@ import numpy as np
 
 # Time parameters
 day = 24.*60.*60.
-dt = 900.
+dt = 300.
 tmax = 12*day # this is 1036800s
 
 # Radius of the Earth
@@ -23,12 +23,12 @@ R = 6371220.
 
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=5, degree=2)
+                             refinement_level=3, degree=2)
                              
 x = SpatialCoordinate(mesh)
 
 # get lat lon coordinates
-theta, lamda, _ = lonlatr_from_xyz(x[0], x[1], x[2])
+lamda, theta, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 
 domain = Domain(mesh, dt, 'BDM', 1)
 
@@ -52,11 +52,11 @@ tracers = [rho_d, X, X2]
 V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
-print('eqn_field_names is', eqn.field_names)
-u_advect = eqn.prescribed_fields('u')
+#print('eqn_field_names is', eqn.field_names)
+#u_advect = eqn.prescribed_fields('u')
 
 # I/O
-dirname = "terminator_toy_spt_FE_k1e-3"
+dirname = "terminator_toy_spt_BE_dt300"
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -79,20 +79,25 @@ io = IO(domain, output, diagnostic_fields = [X_twice, X2_twice, X_plus_X2, X_plu
 theta_c = np.pi/9.
 lamda_c = -np.pi/3.
 
-k1 = 1e-3*max_value(0, sin(theta)*sin(theta_c) + cos(theta)*cos(theta_c)*cos(lamda-lamda_c))
-k2 = 1e-3
+k1 = max_value(0, sin(theta)*sin(theta_c) + cos(theta)*cos(theta_c)*cos(lamda-lamda_c))
+k2 = 1
 
 # This is used in PrescribedTransport()
 physics_parameterisations = [TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
                     species2_name='X2')]
 
-terminator_stepper = ForwardEuler(domain)
+#terminator_stepper = ForwardEuler(domain)
 #terminator_stepper = SSPRK3(domain)
 #terminator_stepper = BackwardEuler(domain)
 
+implicit_formulation = False
+#terminator_stepper = ForwardEuler(domain)
+terminator_stepper = ForwardEuler(domain) if implicit_formulation else BackwardEuler(domain)
+
 # This is used in SplitPhysicsTimestepper
 physics_schemes = [(TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
-                    species2_name='X2'), terminator_stepper)]
+                    species2_name='X2', implicit_formulation=implicit_formulation)
+                    , terminator_stepper)]
 
 # Set up two Gaussian bumps for the initial density field
 theta_c1 = 0.0
@@ -153,6 +158,7 @@ def u_t(t):
 
 
 transport_scheme = SSPRK3(domain)
+#transport_scheme = ForwardEuler(domain)
 #transport_scheme = TrapeziumRule(domain)
 transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
     
