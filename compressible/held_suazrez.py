@@ -35,8 +35,8 @@ config = 'config4'
 dt = 1200.
 days = 200.
 tmax = days * 24. * 60. * 60.
-n = 5  # cells per cubed sphere face edge
-nlayers = 5 # vertical layers
+n = 12  # cells per cubed sphere face edge
+nlayers = 15 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 
 # Lowest order vector advection
@@ -157,10 +157,17 @@ sigma = P_expr / p0
 tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
 tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
 temp_coeff = exner * tau_rad_inverse
+sigma = P_expr / p0
+
+tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
+tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
+temp_coeff = exner * tau_rad_inverse
+# Velocity
+wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
 
 
-
-physics_schemes = [(Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff), ForwardEuler(domain))]
+physics_schemes = [(Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff), ForwardEuler(domain)),
+                   (RayleighFriction(eqn, wind_timescale), ForwardEuler(domain))]
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
