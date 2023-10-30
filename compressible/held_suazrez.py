@@ -35,7 +35,7 @@ config = 'config4'
 dt = 1200.
 days = 200.
 tmax = days * 24. * 60. * 60.
-n = 12  # cells per cubed sphere face edge
+n = 5  # cells per cubed sphere face edge
 nlayers = 5 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 
@@ -69,7 +69,7 @@ elif config =='config7': # vector invariant embedded not limited
 # -------------------------------------------------------------- #
 
 a = 6.371229e6  # radius of earth
-ztop = 3.0e4  # max height
+ztop = 3.2e4  # max height
 
 # Height field
 layerheight = ztop / nlayers
@@ -119,10 +119,54 @@ transport_methods.append(DGUpwind(eqn, 'theta', ibp=IntegrateByParts.ONCE))
 # Linear Solver
 linear_solver = CompressibleSolver(eqn, alpha=alpha)
 
+# set up parameters
+Rd = params.R_d
+cp = params.cp
+kappa = Rd / cp
+g = params.g
+p0 = Constant(100000)
+
+lapse = 0.005
+T0init = 300
+d = 24*60*60 # A day
+T0stra = 200 # Stratosphere temp
+T0surf = 315 # Surface temperature at equator
+T0horiz = 60 # Equator to pole temperature difference
+T0vert = 10 # Stability parameter
+k = 3
+H = Rd * T0surf / g # scale height of atmosphere
+b = 2 # half width parameter
+sigmab = 0.7
+taod = 40 * d
+taou = 4 * d
+taofric = d 
+s = (r / a) * cos(lat)
+A = 1 / lapse
+tao1 = A * lapse / T0init * exp((r - a)*lapse / T0init)
+tao1_int = A * (exp(lapse * (r - a) / T0init) - 1)
+P_expr = p0 * exp(-g / Rd * tao1_int)
+exner = (P_expr / p0) ** (params.kappa)
+theta_expr = T0init / exner
+pie_expr = T0init / theta_expr
+
+T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * ln(P_expr/p0) * cos(lat)**2) * (P_expr / p0)**kappa
+Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
+equilibrium_expr = Teq / exner
+# timescale of temperature forcing
+sigma = P_expr / p0
+tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
+tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
+temp_coeff = exner * tau_rad_inverse
+
+
+
+physics_schemes = [(Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff), ForwardEuler(domain))]
+
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
                                   transport_methods,
-                                  linear_solver=linear_solver, alpha=alpha)
+                                  linear_solver=linear_solver, alpha=alpha,
+                                  physics_schemes=physics_schemes)
 
 # -------------------------------------------------------------- #
 # Parameter
@@ -161,9 +205,10 @@ A = 1 / lapse
 tao1 = A * lapse / T0init * exp((r - a)*lapse / T0init)
 tao1_int = A * (exp(lapse * (r - a) / T0init) - 1)
 P_expr = p0 * exp(-g / Rd * tao1_int)
-theta_expr = T0init * (P_expr / p0) ** (-params.kappa) 
+exner = (P_expr / p0) ** (params.kappa)
+theta_expr = T0init / exner
 pie_expr = T0init / theta_expr
-exner = (P_expr / p0) ** (-params.kappa)
+
 rho_expr = P_expr / (Rd * T0init)
 # Spaces
 u0 = stepper.fields("u")
@@ -179,20 +224,15 @@ Vt = theta0.function_space()
 # temperature
 T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * ln(P_expr/p0) * cos(lat)**2) * (P_expr / p0)**kappa
 Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
-equilibrium_expr = Function(Vt).interpolate(exner * Teq)
+equilibrium_expr = Function(Vt).interpolate(Teq / exner)
 # timescale of temperature forcing
 sigma = P_expr / p0
-tao_cond = (sigma - sigmab) / (1 - sigmab)
+tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
 tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
 temp_coeff = exner * tau_rad_inverse
 # Velocity
 wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
 
-
-print('Applying Temperature Relaxation')
-Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff)
-print('Applying Velocity Relaxation')
-RayleighFriction(eqn, wind_timescale)
 # ------------------------------------------------------------------------------
 # Field Initilisation
 # ------------------------------------------------------------------------------
