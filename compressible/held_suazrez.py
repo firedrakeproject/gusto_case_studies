@@ -90,7 +90,7 @@ eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
 
-dirname = f'Held_suarez_no_relaxation'
+dirname = f'Held_suarez_test'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=9, # every 3 hours
                           dump_nc=True,
