@@ -87,7 +87,7 @@ eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
 
-dirname = f'HS_temp_vel'
+dirname = f'HS_temp'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=9, # every 3 hours
                           dump_nc=True,
