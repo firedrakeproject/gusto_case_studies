@@ -35,8 +35,8 @@ config = 'config4'
 dt = 1200.
 days = 200.
 tmax = days * 24. * 60. * 60.
-n = 12  # cells per cubed sphere face edge
-nlayers = 15 # vertical layers
+n = 5  # cells per cubed sphere face edge
+nlayers = 5 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 
 # Lowest order vector advection
@@ -119,55 +119,8 @@ transport_methods.append(DGUpwind(eqn, 'theta', ibp=IntegrateByParts.ONCE))
 # Linear Solver
 linear_solver = CompressibleSolver(eqn, alpha=alpha)
 
-# set up parameters
-Rd = params.R_d
-cp = params.cp
-kappa = Rd / cp
-g = params.g
-p0 = Constant(100000)
-
-lapse = 0.005
-T0init = 300
-d = 24*60*60 # A day
-T0stra = 200 # Stratosphere temp
-T0surf = 315 # Surface temperature at equator
-T0horiz = 60 # Equator to pole temperature difference
-T0vert = 10 # Stability parameter
-k = 3
-H = Rd * T0surf / g # scale height of atmosphere
-b = 2 # half width parameter
-sigmab = 0.7
-taod = 40 * d
-taou = 4 * d
-taofric = d 
-s = (r / a) * cos(lat)
-A = 1 / lapse
-tao1 = A * lapse / T0init * exp((r - a)*lapse / T0init)
-tao1_int = A * (exp(lapse * (r - a) / T0init) - 1)
-P_expr = p0 * exp(-g / Rd * tao1_int)
-exner = (P_expr / p0) ** (params.kappa)
-theta_expr = T0init / exner
-pie_expr = T0init / theta_expr
-
-T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * ln(P_expr/p0) * cos(lat)**2) * (P_expr / p0)**kappa
-Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
-equilibrium_expr = Teq / exner
-# timescale of temperature forcing
-sigma = P_expr / p0
-tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
-tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
-temp_coeff = exner * tau_rad_inverse
-sigma = P_expr / p0
-
-tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
-tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
-temp_coeff = exner * tau_rad_inverse
-# Velocity
-wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
-
-
-physics_schemes = [(Relaxation(eqn, 'theta', equilibrium_expr, coeff=temp_coeff), ForwardEuler(domain)),
-                   (RayleighFriction(eqn, wind_timescale), ForwardEuler(domain))]
+physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain)),
+                   (RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
