@@ -20,13 +20,10 @@ Variable height: Applies a non uniform height field.
 Alpha:           Adjusts the ratio of implicit to explicit in the solver. 
                  Default = 0.5
 """
-
-from firedrake import (ExtrudedMesh,  TensorProductElement, ln,
-                       SpatialCoordinate, cos, sin, pi, sqrt, HDiv, HCurl,
-                       exp, Constant, Function, as_vector, acos, interval,
-                       errornorm, norm, min_value, max_value, le, ge, FiniteElement,
-                       NonlinearVariationalProblem, NonlinearVariationalSolver)
-from gusto import *                                            #
+from gusto import *
+from firedrake import (ExtrudedMesh, ln,
+                       SpatialCoordinate, cos, sin, sqrt,
+                       exp, Constant, Function, as_vector, ge)
 
 # --------------------------------------------------------------#
 # Configuratio Options
@@ -119,8 +116,8 @@ transport_methods.append(DGUpwind(eqn, 'theta', ibp=IntegrateByParts.ONCE))
 # Linear Solver
 linear_solver = CompressibleSolver(eqn, alpha=alpha)
 
-physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain)),
-                   (RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
+physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain))]
+                   #(RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
