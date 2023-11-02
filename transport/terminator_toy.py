@@ -15,7 +15,7 @@ import numpy as np
 
 # Time parameters
 day = 24.*60.*60.
-dt = 300.
+dt = 900.
 tmax = 12*day # this is 1036800s
 
 # Radius of the Earth
@@ -52,11 +52,8 @@ tracers = [rho_d, X, X2]
 V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
-#print('eqn_field_names is', eqn.field_names)
-#u_advect = eqn.prescribed_fields('u')
-
 # I/O
-dirname = "terminator_toy_spt_BE_dt300"
+dirname = "terminator_toy_implicit_form"
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -90,9 +87,10 @@ physics_parameterisations = [TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
 #terminator_stepper = SSPRK3(domain)
 #terminator_stepper = BackwardEuler(domain)
 
-implicit_formulation = False
-#terminator_stepper = ForwardEuler(domain)
-terminator_stepper = ForwardEuler(domain) if implicit_formulation else BackwardEuler(domain)
+implicit_formulation = True
+#terminator_stepper = ForwardEuler(domain) if implicit_formulation else BackwardEuler(domain)
+
+terminator_stepper = BackwardEuler(domain)
 
 # This is used in SplitPhysicsTimestepper
 physics_schemes = [(TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
@@ -155,13 +153,17 @@ def u_t(t):
   
   # No flow test:
   #return Constant(0)*u_expr
-
+  
+SUPG_options = SUPGOptions()
 
 transport_scheme = SSPRK3(domain)
+#transport_scheme = SSPRK3(domain, options=SUPG_options)
 #transport_scheme = ForwardEuler(domain)
 #transport_scheme = TrapeziumRule(domain)
+#transport_method = [DGUpwind(eqn, 'rho_d', ibp=SUPG_options.ibp), DGUpwind(eqn, 'X', ibp=SUPG_options.ibp), DGUpwind(eqn, 'X2', ibp=SUPG_options.ibp)]
+#transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
 transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
-    
+
 # Time stepper
 #stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
 #                              physics_parametrisations=physics_parameterisations,
@@ -170,16 +172,17 @@ transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X
 # When using SplitPhysicsTimestepper, we define an initial velocity
 # that won't change
 
-#stepper = SplitPhysicsTimestepper(eqn, transport_scheme, io, 
-#                                    spatial_methods=transport_method,
-#                                    physics_schemes=physics_schemes)
-                                    
-# The new hybrid timestepper
-
-stepper = SplitPrescribedTransport(eqn, transport_scheme, io, 
+stepper = SplitPhysicsTimestepper(eqn, transport_scheme, io, 
                                     spatial_methods=transport_method,
                                     physics_schemes=physics_schemes,
                                     prescribed_transporting_velocity=u_t)
+                                    
+# The new hybrid timestepper
+
+#stepper = SplitPrescribedTransport(eqn, transport_scheme, io, 
+#                                    spatial_methods=transport_method,
+#                                    physics_schemes=physics_schemes,
+#                                    prescribed_transporting_velocity=u_t)
 
 # initial conditions
 stepper.fields("rho_d").interpolate(rho_expr)

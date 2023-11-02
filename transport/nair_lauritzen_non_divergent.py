@@ -1,7 +1,7 @@
 from gusto import *
 from firedrake import IcosahedralSphereMesh, Constant, ge, le, exp, cos, \
     sin, conditional, interpolate, SpatialCoordinate, VectorFunctionSpace, \
-    Function, assemble, dx, FunctionSpace, pi, min_value, acos
+    Function, assemble, dx, FunctionSpace, pi, min_value, acos, as_vector
 
 import numpy as np
 
@@ -30,6 +30,7 @@ R = 6371220.
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
                              refinement_level=3, degree=2)
+                             
 x = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
@@ -38,7 +39,7 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_nondiv_dumptest_"+scalar_case
+dirname = "nair_lauritzen_nondiv_reflev3_dt900_flip"+scalar_case
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -47,20 +48,20 @@ dumpfreq = int(day/dt)
 output = OutputParameters(dirname=dirname,
                           dumplist_latlon=['D'],
                           dumpfreq = dumpfreq,
-                          log_level="INFO",
                           dump_nc = True,
-                          dump_vtus = False)
+                          dump_vtus = True)
                           
 io = IO(domain, output)
 
 # get lat lon coordinates
-theta, lamda = latlon_coords(mesh)
+#theta, lamda, _ = lonlatr_from_xyz(x[0], x[1], x[2])
+lamda, theta, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 
 # Specify locations of the two bumps
 theta_c1 = 0.0
 theta_c2 = 0.0
-lamda_c1 = -pi/6
-lamda_c2 = pi/6
+lamda_c1 = -pi/4
+lamda_c2 = pi/4
 
 if scalar_case == 'cosine_bells': 
 
