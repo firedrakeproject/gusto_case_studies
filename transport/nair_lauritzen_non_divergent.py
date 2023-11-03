@@ -39,7 +39,7 @@ V = domain.spaces("DG")
 eqn = AdvectionEquation(domain, V, "D")
 
 # I/O
-dirname = "nair_lauritzen_nondiv_reflev3_dt900_flip"+scalar_case
+dirname = "nair_lauritzen_nondiv_"+scalar_case
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -49,12 +49,11 @@ output = OutputParameters(dirname=dirname,
                           dumplist_latlon=['D'],
                           dumpfreq = dumpfreq,
                           dump_nc = True,
-                          dump_vtus = True)
+                          dump_vtus = False)
                           
 io = IO(domain, output)
 
 # get lat lon coordinates
-#theta, lamda, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 lamda, theta, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 
 # Specify locations of the two bumps
