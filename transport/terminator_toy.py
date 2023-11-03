@@ -53,7 +53,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "terminator_toy_implicit_form"
+dirname = "terminator_toy"
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -62,15 +62,13 @@ dumpfreq = int(day/dt)
 output = OutputParameters(dirname=dirname,
                           dumpfreq = dumpfreq,
                           dump_nc = True,
-                          dump_vtus = True)               
-                         
-X_twice = Sum('X', 'X')
-X2_twice = Sum('X2', 'X2')
+                          dump_vtus = True)     
+
 X_plus_X2 = Sum('X', 'X2')
-X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2') 
+X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2')
 tracer_diagnostic = TracerDensity('X_plus_X2_plus_X2', 'rho_d')
-                          
-io = IO(domain, output, diagnostic_fields = [X_twice, X2_twice, X_plus_X2, X_plus_X2_plus_X2, tracer_diagnostic])
+
+io = IO(domain, output, diagnostic_fields = [X_plus_X2, X_plus_X2_plus_X2, tracer_diagnostic])
 
 # Define the reaction rates:
 theta_c = np.pi/9.
@@ -79,23 +77,10 @@ lamda_c = -np.pi/3.
 k1 = max_value(0, sin(theta)*sin(theta_c) + cos(theta)*cos(theta_c)*cos(lamda-lamda_c))
 k2 = 1
 
-# This is used in PrescribedTransport()
-physics_parameterisations = [TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
-                    species2_name='X2')]
-
-#terminator_stepper = ForwardEuler(domain)
-#terminator_stepper = SSPRK3(domain)
-#terminator_stepper = BackwardEuler(domain)
-
-implicit_formulation = True
-#terminator_stepper = ForwardEuler(domain) if implicit_formulation else BackwardEuler(domain)
-
 terminator_stepper = BackwardEuler(domain)
 
-# This is used in SplitPhysicsTimestepper
 physics_schemes = [(TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X',
-                    species2_name='X2', implicit_formulation=implicit_formulation)
-                    , terminator_stepper)]
+                    species2_name='X2'), terminator_stepper)]
 
 # Set up two Gaussian bumps for the initial density field
 theta_c1 = 0.0
@@ -115,24 +100,18 @@ X2 = cos(theta_c2)*cos(lamda_c2)
 Y2 = cos(theta_c2)*sin(lamda_c2)
 Z2 = sin(theta_c2)   
 
-# Define the two Gaussian bumps
 g1 = exp(-5*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
 g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
 
 rho_expr = g1 + g2
 
-# Define the initial amounts of the species:
 X_T_0 = 4e-6
+r = k1/(4*k2)
+D_val = sqrt(r**2 + 2*X_T_0*r)
 
-#r = k1/(4*k2)
-
-#D_val = sqrt(r**2 + 2*X_T_0*r)
-
-#X_0 = D_val - r
-#X2_0 = 0.5*(X_T_0 - D_val + r)
-
-X_0 = X_T_0 + 0*theta
-X2_0 = 0*theta
+# Initial condition for each species
+X_0 = D_val - r
+X2_0 = 0.5*(X_T_0 - D_val + r)
 
 T = tmax
 k = 10*R/T
@@ -148,41 +127,18 @@ def u_t(t):
   
   u_expr = as_vector((cartesian_u_expr, cartesian_v_expr, cartesian_w_expr))
   
-  # Standard velocity profile
   return u_expr
-  
-  # No flow test:
-  #return Constant(0)*u_expr
-  
-SUPG_options = SUPGOptions()
+
 
 transport_scheme = SSPRK3(domain)
-#transport_scheme = SSPRK3(domain, options=SUPG_options)
-#transport_scheme = ForwardEuler(domain)
-#transport_scheme = TrapeziumRule(domain)
-#transport_method = [DGUpwind(eqn, 'rho_d', ibp=SUPG_options.ibp), DGUpwind(eqn, 'X', ibp=SUPG_options.ibp), DGUpwind(eqn, 'X2', ibp=SUPG_options.ibp)]
-#transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
 transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
 
-# Time stepper
-#stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
-#                              physics_parametrisations=physics_parameterisations,
-#                              prescribed_transporting_velocity=u_t)
-
-# When using SplitPhysicsTimestepper, we define an initial velocity
-# that won't change
-
-stepper = SplitPhysicsTimestepper(eqn, transport_scheme, io, 
+# Timstepper that solves the physics separately to the dynamics
+# with a defined prescribed transporting velocity
+stepper = SplitPrescribedTransport(eqn, transport_scheme, io, 
                                     spatial_methods=transport_method,
                                     physics_schemes=physics_schemes,
                                     prescribed_transporting_velocity=u_t)
-                                    
-# The new hybrid timestepper
-
-#stepper = SplitPrescribedTransport(eqn, transport_scheme, io, 
-#                                    spatial_methods=transport_method,
-#                                    physics_schemes=physics_schemes,
-#                                    prescribed_transporting_velocity=u_t)
 
 # initial conditions
 stepper.fields("rho_d").interpolate(rho_expr)
