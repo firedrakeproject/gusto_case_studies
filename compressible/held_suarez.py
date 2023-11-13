@@ -23,7 +23,8 @@ Alpha:           Adjusts the ratio of implicit to explicit in the solver.
 from gusto import *
 from firedrake import (ExtrudedMesh, ln,
                        SpatialCoordinate, cos, sin, sqrt,
-                       exp, Constant, Function, as_vector, ge)
+                       exp, Constant, Function, as_vector, ge,
+                       NonlinearVariationalProblem, NonlinearVariationalSolver)
 
 # --------------------------------------------------------------#
 # Configuratio Options
@@ -87,7 +88,7 @@ eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option
 print(f'Number of DOFs = {eqn.X.function_space().dim()}')
 
 
-dirname = f'HS_temp'
+dirname = f'HS_newrelaxation'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=9, # every 3 hours
                           dump_nc=True,
@@ -116,8 +117,8 @@ transport_methods.append(DGUpwind(eqn, 'theta', ibp=IntegrateByParts.ONCE))
 # Linear Solver
 linear_solver = CompressibleSolver(eqn, alpha=alpha)
 
-physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain))]
-                   #(RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
+physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain)),
+                   (RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
 
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
@@ -136,63 +137,90 @@ l = sqrt(x**2 + y**2)
 # set up parameters
 Rd = params.R_d
 cp = params.cp
-kappa = Rd / cp
 g = params.g
 p0 = Constant(100000)
 
 lapse = 0.005
-T0init = 300
-d = 24*60*60 # A day
-T0stra = 200 # Stratosphere temp
-T0surf = 315 # Surface temperature at equator
-T0horiz = 60 # Equator to pole temperature difference
-T0vert = 10 # Stability parameter
-k = 3
-H = Rd * T0surf / g # scale height of atmosphere
+T0e = 310 # Equatorial temp
+T0p = 240 # Polar surface temp
+T0 = 0.5 * (T0e + T0p)
+H = Rd * T0 / g # scale height of atmosphere
+k = 3 # power of temp field
 b = 2 # half width parameter
-sigmab = 0.7
-taod = 40 * d
-taou = 4 * d
-taofric = d 
-# -----------------------------------------------------------------------------
-# Background Profiles
-# -----------------------------------------------------------------------------
-s = (r / a) * cos(lat)
-A = 1 / lapse
-tao1 = A * lapse / T0init * exp((r - a)*lapse / T0init)
-tao1_int = A * (exp(lapse * (r - a) / T0init) - 1)
-P_expr = p0 * exp(-g / Rd * tao1_int)
-exner = (P_expr / p0) ** (params.kappa)
-theta_expr = T0init / exner
-pie_expr = T0init / theta_expr
 
-rho_expr = P_expr / (Rd * T0init)
-# Spaces
 u0 = stepper.fields("u")
 rho0 = stepper.fields("rho")
 theta0 = stepper.fields("theta")
+
+# spaces
 Vu = u0.function_space()
 Vr = rho0.function_space()
 Vt = theta0.function_space()
+
+# -------------------------------------------------------------- #
+# Base State
+# -------------------------------------------------------------- #
+
+# expressions for variables from paper
+s = (r / a) * cos(lat)
+A = 1 / lapse
+B = (T0e - T0p) / ((T0e + T0p)*T0p)
+C = ((k + 2) / 2)*((T0e - T0p) / (T0e * T0p))
+
+tao1 = A * lapse / T0 * exp((r - a)*lapse / T0) + B * (1 - 2*((r-a)/(b*H))**2)*exp(-((r-a) / (b*H))**2)
+tao2 = C * (1 - 2*((r-a)/(b*H))**2)*exp(-((r - a) / (b*H))**2)
+
+tao1_int = A * (exp(lapse * (r - a) / T0) - 1) + B * (r - a) * exp(-((r-a)/(b*H))**2)
+tao2_int = C * (r - a)  * exp(-((r-a) / (b*H))**2)
+
+# Variable fields
+Temp = (a / r)**2 * (tao1 - tao2 * ( s**k - (k / (k+2)) *s**(k+2)))**(-1)
+P_expr = p0 * exp(-g / Rd * tao1_int + g / Rd * tao2_int * (s**k - (k / (k+2)) *s**(k+2)))
+
+# wind expression
+wind_proxy = (g / a) * k * Temp * tao2_int * (((r * cos(lat)) / a)**(k-1) - ((r * cos(lat)) / a)**(k+1))
+wind = -omega * r * cos(lat) + sqrt((omega * r * cos(lat))**2 + r * cos(lat) * wind_proxy )
+
+theta_expr = Temp * (P_expr / p0) ** (-params.kappa) 
+pie_expr = Temp / theta_expr
+rho_expr = P_expr / (Rd * Temp)
+
 # ------------------------------------------------------------------------------
 # Relxation conditions
 # ------------------------------------------------------------------------------
 
 # temperature
-T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * ln(P_expr/p0) * cos(lat)**2) * (P_expr / p0)**kappa
-Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
-equilibrium_expr = Function(Vt).interpolate(Teq / exner)
+#T_condition = (T0surf - T0horiz * sin(lat)**2 - T0vert * ln(P_expr/p0) * cos(lat)**2) * (P_expr / p0)**kappa
+#Teq = conditional(ge(T0stra, T_condition), T0stra, T_condition)
+#equilibrium_expr = Function(Vt).interpolate(Teq / exner)
 # timescale of temperature forcing
-sigma = P_expr / p0
-tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
-tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
-temp_coeff = exner * tau_rad_inverse
+#sigma = P_expr / p0
+#tao_cond = (sigma - sigmab) / (1 - sigmab)*cos(lat)**4
+#tau_rad_inverse = 1 / taod + (1/taou - 1/taod) * conditional(ge(0, tao_cond), 0, tao_cond)
+#temp_coeff = exner * tau_rad_inverse
 # Velocity
-wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
+#wind_timescale = 1 / taofric * conditional(ge(0, tao_cond), 0, tao_cond)
 
 # ------------------------------------------------------------------------------
 # Field Initilisation
 # ------------------------------------------------------------------------------
+zonal_u = wind 
+merid_u = Constant(0.0) 
+radial_u = Constant(0.0)
+
+e_lon = xyz_vector_from_lonlatr(1, 0, 0, xyz)
+e_lat = xyz_vector_from_lonlatr(0, 1, 0, xyz)
+e_r = xyz_vector_from_lonlatr(0, 0, 1, xyz)
+
+print('Set up initial conditions')
+print('project u')
+test_u = TestFunction(Vu)
+dx_reduced = dx(degree=4)
+u_field = zonal_u*e_lon + merid_u * e_lat + radial_u * e_r 
+u_proj_eqn = inner(test_u,u0 - u_field)*dx_reduced
+u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
+u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
+u_proj_solver.solve()
 
 theta0.interpolate(theta_expr)
 pie = Function(Vr).interpolate(pie_expr)
