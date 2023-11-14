@@ -23,7 +23,7 @@ R = 6371220.
 
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=3, degree=2)
+                             refinement_level=4, degree=2)
                              
 x = SpatialCoordinate(mesh)
 
@@ -32,8 +32,7 @@ lamda, theta, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 
 domain = Domain(mesh, dt, 'BDM', 1)
 
-# Define the dry density and 
-# the two species as tracers
+# Define the dry density and the two species as tracers
 rho_d = ActiveTracer(name='rho_d', space='DG',
                  variable_type=TracerVariableType.density,
                  transport_eqn=TransportEquationType.conservative)
@@ -53,7 +52,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "terminator_toy"
+dirname = "terminator_toy_limiter_test_reflev4"
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -129,8 +128,12 @@ def u_t(t):
   
   return u_expr
 
+# Define limiters for the interacting species
+limiter_space = domain.spaces('DG')
+sublimiters = {'X': DG1Limiter(limiter_space), 'X2': DG1Limiter(limiter_space)}
+MixedLimiter = MixedFSLimiter(eqn, sublimiters)
 
-transport_scheme = SSPRK3(domain)
+transport_scheme = SSPRK3(domain, limiter=MixedLimiter)
 transport_method = [DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')]
 
 # Timstepper that solves the physics separately to the dynamics
