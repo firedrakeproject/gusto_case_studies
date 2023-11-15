@@ -1,5 +1,5 @@
 """
-A case with a 1m high mountain that won't get through a single time step.
+A case with a mountain and quadratic extrusion that won't get through a single time step.
 """
 
 from gusto import *
