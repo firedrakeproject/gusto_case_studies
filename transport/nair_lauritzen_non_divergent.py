@@ -30,6 +30,7 @@ R = 6371220.
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
                              refinement_level=3, degree=2)
+                             
 x = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'BDM', 1)
 
@@ -53,13 +54,13 @@ output = OutputParameters(dirname=dirname,
 io = IO(domain, output)
 
 # get lat lon coordinates
-theta, lamda = latlon_coords(mesh)
+lamda, theta, _ = lonlatr_from_xyz(x[0], x[1], x[2])
 
 # Specify locations of the two bumps
 theta_c1 = 0.0
 theta_c2 = 0.0
-lamda_c1 = -pi/6
-lamda_c2 = pi/6
+lamda_c1 = -pi/4
+lamda_c2 = pi/4
 
 if scalar_case == 'cosine_bells': 
 
