@@ -23,7 +23,7 @@ R = 6371220.
 
 # Domain
 mesh = IcosahedralSphereMesh(radius=R,
-                             refinement_level=4, degree=2)
+                             refinement_level=3, degree=2)
                              
 x = SpatialCoordinate(mesh)
 
@@ -52,7 +52,7 @@ V = domain.spaces("HDiv")
 eqn = CoupledTransportEquation(domain, active_tracers=tracers, Vu = V)
 
 # I/O
-dirname = "terminator_toy_limiter_test_reflev4"
+dirname = "terminator_toy"
 
 # Dump the solution at each day
 dumpfreq = int(day/dt)
@@ -63,6 +63,7 @@ output = OutputParameters(dirname=dirname,
                           dump_nc = True,
                           dump_vtus = True)     
 
+# Define intermediate sums to be able to use the TracerDensity diagnostic
 X_plus_X2 = Sum('X', 'X2')
 X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2')
 tracer_diagnostic = TracerDensity('X_plus_X2_plus_X2', 'rho_d')
@@ -143,9 +144,10 @@ stepper = SplitPrescribedTransport(eqn, transport_scheme, io,
                                     physics_schemes=physics_schemes,
                                     prescribed_transporting_velocity=u_t)
 
-# initial conditions
+# Initial conditions
 stepper.fields("rho_d").interpolate(rho_expr)
 stepper.fields("X").interpolate(X_0)
 stepper.fields("X2").interpolate(X2_0)
 
+# Run until Termination!
 stepper.run(t=0, tmax=tmax)
