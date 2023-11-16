@@ -33,8 +33,8 @@ config = 'config4'
 dt = 1200.
 days = 200.
 tmax = days * 24. * 60. * 60.
-n = 5  # cells per cubed sphere face edge
-nlayers = 5 # vertical layers
+n = 12  # cells per cubed sphere face edge
+nlayers = 15 # vertical layers
 alpha = 0.50 # ratio between implicit and explict in solver
 
 # Lowest order vector advection
@@ -85,17 +85,17 @@ omega = Constant(7.292e-5)
 Omega = as_vector((0, 0, omega))
 print('making eqn')    
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
-print(f'Number of DOFs = {eqn.X.function_space().dim()}')
+print(f'ideal cores = {eqn.X.function_space().dim() / 50000}')
 
 
-dirname = f'HS_newrelaxation'
+dirname = f'HS_vel_config4'
 output = OutputParameters(dirname=dirname,
-                          dumpfreq=9, # every 3 hours
+                          dumpfreq=9, # every hour
                           dump_nc=True,
                           dump_vtus=False)
 diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u'),RadialComponent('u'),
                     CourantNumber(), Temperature(eqn), Pressure(eqn)]
-          
+
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport Schemes 
@@ -107,7 +107,7 @@ if u_form == 'vector_invariant_form':
 else:
     transported_fields.append(TrapeziumRule(domain, "u", options=SUPGOptions()))
     transport_methods.append(DGUpwind(eqn, 'u', ibp=SUPGOptions().ibp))
-    
+
 transported_fields.append(SSPRK3(domain, "rho"))
 transported_fields.append(SSPRK3(domain, "theta", options=theta_transport))
 
@@ -117,9 +117,8 @@ transport_methods.append(DGUpwind(eqn, 'theta', ibp=IntegrateByParts.ONCE))
 # Linear Solver
 linear_solver = CompressibleSolver(eqn, alpha=alpha)
 
-physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain)),
-                   (RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
-
+physics_schemes = [(RayleighFriction(eqn, parameters=params), ForwardEuler(domain))]
+#physics_schemes = [(Relaxation(eqn, 'theta', parameters=params), ForwardEuler(domain))]
 # Time Stepper
 stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
                                   transport_methods,
