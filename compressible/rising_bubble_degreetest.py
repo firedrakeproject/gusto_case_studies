@@ -45,7 +45,7 @@ domain = Domain(mesh, dt, "CG",
 parameters = CompressibleParameters()
 ic('making equation')
 eqn = CompressibleEulerEquations(domain, parameters)
-
+print(f'ideal number of cores = {eqn.X.function_space().dim() / 50000}')
 # I/O
 dirname = f'RB_horiz={h_degree}_vertical={v_degree}'
 output = OutputParameters(dirname=dirname,
