@@ -16,17 +16,11 @@ from icecream import ic
 dt = 1.
 L = 1000.
 H = 1000.
-
-if '--running-tests' in sys.argv:
-    tmax = dt
-    dumpfreq = 1
-    nlayers = int(H/50.)
-    ncolumns = int(L/50.)
-else:
-    tmax = 600.
-    dumpfreq = int(tmax / (6*dt))
-    nlayers = int(H/10.)
-    ncolumns = int(L/10.)
+tmax = 600.
+dumpfreq = int(tmax / (6*dt))
+res = 5.
+nlayers = int(H / res)
+ncolumns = int(L  /res)
 
 # ---------------------------------------------------------------------------- #
 # Set up model objects
@@ -47,7 +41,7 @@ ic('making equation')
 eqn = CompressibleEulerEquations(domain, parameters)
 print(f'ideal number of cores = {eqn.X.function_space().dim() / 50000}')
 # I/O
-dirname = f'RB_horiz={h_degree}_vertical={v_degree}'
+dirname = f'RB_horiz={h_degree}_vertical={v_degree}_res={res}'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
                           dumplist=['u'],
