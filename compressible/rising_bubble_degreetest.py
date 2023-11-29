@@ -8,7 +8,6 @@ from firedrake import (PeriodicIntervalMesh, ExtrudedMesh, SpatialCoordinate,
                        Constant, pi, cos, Function, sqrt, conditional, FiniteElement,
                        HDiv, HCurl, interval, TensorProductElement)
 import sys
-from icecream import ic
 # ---------------------------------------------------------------------------- #
 # Test case parameters
 # ---------------------------------------------------------------------------- #
@@ -25,7 +24,7 @@ ncolumns = int(L  /res)
 # ---------------------------------------------------------------------------- #
 # Set up model objects
 # ---------------------------------------------------------------------------- #
-degrees = [(0,0), (0,1), (1,0), (1,1)]
+degrees = [(0,1), (1,0), (1,1)]
 for degree in degrees:
 	# Domain
 	h_degree = degree[0]
@@ -42,9 +41,7 @@ for degree in degrees:
 
 	# Equation
 	parameters = CompressibleParameters()
-	ic('making equation')
 	eqn = CompressibleEulerEquations(domain, parameters)
-	print(f'ideal number of cores = {eqn.X.function_space().dim() / 50000}')
 	# I/O
 	dirname = f'RB_horiz={h_degree}_vertical={v_degree}_res={res}'
 	output = OutputParameters(dirname=dirname,
