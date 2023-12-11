@@ -37,105 +37,114 @@ else:
 # ---------------------------------------------------------------------------- #
 
 # Domain -- 3D volume mesh
-m = PeriodicIntervalMesh(columns, L)
-mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
-domain = Domain(mesh, dt, "CG", 1)
+degrees = [(0, 0), (0,1), (1,0), (1,1)]
+for degree in degrees:
+    h_degree = degree[0]
+    v_degree = degree[1]
+    m = PeriodicIntervalMesh(columns, L)
+    mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
+    domain = Domain(mesh, dt, "CG", 
+                    horizontal_degree=h_degree, 
+		            vertical_degree=v_degree)
 
-# Equation
-Tsurf = 300.
-parameters = CompressibleParameters()
-eqns = CompressibleEulerEquations(domain, parameters)
+    # Equation
+    Tsurf = 300.
+    parameters = CompressibleParameters()
+    eqns = CompressibleEulerEquations(domain, parameters)
 
-# I/O
-points_x = np.linspace(0., L, 100)
-points_z = [H/2.]
-points = np.array([p for p in itertools.product(points_x, points_z)])
-dirname = 'skamarock_klemp_nonlinear'
+    # I/O
+    points_x = np.linspace(0., L, 100)
+    points_z = [H/2.]
+    points = np.array([p for p in itertools.product(points_x, points_z)])
+    dirname = 'skamarock_klemp_nonlinear'
+    output = OutputParameters(dirname=dirname,
+                              dumpfreq=dumpfreq,
+                              dumplist=['u'],
+                              dump_nc=True,
+                              dump_vtus = False)
+    diagnostic_fields = [CourantNumber(), ZonalComponent('u'), MeridionalComponent('u'),
+                         RadialComponent('u'), Perturbation('theta'), Perturbation('rho'),
+                         CompressibleKineticEnergy('u'), PotentialEnergy(eqns), InternalEnergy(eqns),
+                         RichardsonNumber('theta', parameters.g/Tsurf)]
+    io = IO(domain, output, diagnostic_fields=diagnostic_fields)
+    # Transport options
 
-# Dumping point data using legacy PointDataOutput is not supported in parallel
-if COMM_WORLD.size == 1:
-    output = OutputParameters(
-        dirname=dirname,
-        dumpfreq=dumpfreq,
-        pddumpfreq=dumpfreq,
-        dumplist=['u'],
-        point_data=[('theta_perturbation', points)],
-    )
-else:
-    logger.warning(
-        'Dumping point data using legacy PointDataOutput is not'
-        ' supported in parallel\nDisabling PointDataOutput'
-    )
-    output = OutputParameters(
-        dirname=dirname,
-        dumpfreq=dumpfreq,
-        pddumpfreq=dumpfreq,
-        dumplist=['u'],
-    )
+    VDG1 = domain.spaces("DG1_equispaced")
+    VCG1 = FunctionSpace(mesh, "CG", 1)
+    Vu_DG1 = VectorFunctionSpace(mesh, VDG1.ufl_element())
+    Vu_CG1 = VectorFunctionSpace(mesh, "CG", 1)
 
-diagnostic_fields = [CourantNumber(), Gradient('u'), Perturbation('theta'),
-                     Gradient('theta_perturbation'), Perturbation('rho'),
-                     RichardsonNumber('theta', parameters.g/Tsurf), Gradient('theta')]
-io = IO(domain, output, diagnostic_fields=diagnostic_fields)
+    u_opts = RecoveryOptions(embedding_space=Vu_DG1,
+				             recovered_space=Vu_CG1)
+    rho_opts = RecoveryOptions(embedding_space=VDG1,
+				               recovered_space=VCG1)
+    
+    if v_degree == 0:
+        u_opts = RecoveryOptions(embedding_space=Vu_DG1,
+				                 recovered_space=Vu_CG1,
+				                 boundary_method=BoundaryMethod.taylor)
+        rho_opts = RecoveryOptions(embedding_space=VDG1,
+                                   recovered_space=VCG1,
+                                   boundary_method=BoundaryMethod.taylor)
 
-# Transport schemes
-theta_opts = SUPGOptions()
-transported_fields = [TrapeziumRule(domain, "u"),
-                      SSPRK3(domain, "rho"),
-                      SSPRK3(domain, "theta", options=theta_opts)]
-transport_methods = [DGUpwind(eqns, "u"),
-                     DGUpwind(eqns, "rho"),
-                     DGUpwind(eqns, "theta", ibp=theta_opts.ibp)]
+    theta_opts = RecoveryOptions(embedding_space=VDG1,
+				                 recovered_space=VCG1)
+    transported_fields = [TrapeziumRule(domain, "u", options=u_opts),
+                        SSPRK3(domain, "rho", options=rho_opts),
+                        SSPRK3(domain, "theta", options=theta_opts)]
+    transport_methods = [DGUpwind(eqns, "u"),
+                        DGUpwind(eqns, "rho"),
+                        DGUpwind(eqns, "theta")]
 
-# Linear solver
-linear_solver = CompressibleSolver(eqns)
+    # Linear solver
+    linear_solver = CompressibleSolver(eqns)
 
-# Time stepper
-stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
-                                  transport_methods,
-                                  linear_solver=linear_solver)
+    # Time stepper
+    stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
+                                    transport_methods,
+                                    linear_solver=linear_solver)
 
-# ---------------------------------------------------------------------------- #
-# Initial conditions
-# ---------------------------------------------------------------------------- #
+    # ---------------------------------------------------------------------------- #
+    # Initial conditions
+    # ---------------------------------------------------------------------------- #
 
-u0 = stepper.fields("u")
-rho0 = stepper.fields("rho")
-theta0 = stepper.fields("theta")
+    u0 = stepper.fields("u")
+    rho0 = stepper.fields("rho")
+    theta0 = stepper.fields("theta")
 
-# spaces
-Vu = domain.spaces("HDiv")
-Vt = domain.spaces("theta")
-Vr = domain.spaces("DG")
+    # spaces
+    Vu = domain.spaces("HDiv")
+    Vt = domain.spaces("theta")
+    Vr = domain.spaces("DG")
 
-# Thermodynamic constants required for setting initial conditions
-# and reference profiles
-g = parameters.g
-N = parameters.N
+    # Thermodynamic constants required for setting initial conditions
+    # and reference profiles
+    g = parameters.g
+    N = parameters.N
 
-x, z = SpatialCoordinate(mesh)
+    x, z = SpatialCoordinate(mesh)
 
-# N^2 = (g/theta)dtheta/dz => dtheta/dz = theta N^2g => theta=theta_0exp(N^2gz)
-thetab = Tsurf*exp(N**2*z/g)
+    # N^2 = (g/theta)dtheta/dz => dtheta/dz = theta N^2g => theta=theta_0exp(N^2gz)
+    thetab = Tsurf*exp(N**2*z/g)
 
-theta_b = Function(Vt).interpolate(thetab)
-rho_b = Function(Vr)
+    theta_b = Function(Vt).interpolate(thetab)
+    rho_b = Function(Vr)
 
-# Calculate hydrostatic exner
-compressible_hydrostatic_balance(eqns, theta_b, rho_b)
+    # Calculate hydrostatic exner
+    compressible_hydrostatic_balance(eqns, theta_b, rho_b)
 
-a = 5.0e3
-deltaTheta = 1.0e-2
-theta_pert = deltaTheta*sin(pi*z/H)/(1 + (x - L/2)**2/a**2)
-theta0.interpolate(theta_b + theta_pert)
-rho0.assign(rho_b)
-u0.project(as_vector([20.0, 0.0]))
+    a = 5.0e3
+    deltaTheta = 1.0e-2
+    theta_pert = deltaTheta*sin(pi*z/H)/(1 + (x - L/2)**2/a**2)
+    theta0.interpolate(theta_b + theta_pert)
+    rho0.assign(rho_b)
+    u0.project(as_vector([20.0, 0.0]))
 
-stepper.set_reference_profiles([('rho', rho_b),
-                                ('theta', theta_b)])
+    stepper.set_reference_profiles([('rho', rho_b),
+                                    ('theta', theta_b)])
 
-# ---------------------------------------------------------------------------- #
-# Run
-# ---------------------------------------------------------------------------- #
+    # ---------------------------------------------------------------------------- #
+    # Run
+    # ---------------------------------------------------------------------------- #
 
-stepper.run(t=0, tmax=tmax)
+    stepper.run(t=0, tmax=tmax)

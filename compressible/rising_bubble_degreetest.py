@@ -27,17 +27,17 @@ ncolumns = int(L  /res)
 degrees = [(0,1), (1,0), (1,1)]
 for degree in degrees:
 	# Domain
-	h_degree = degree[0]
-	v_degree = degree[1]
-	if v_degree == 0:
-	    nlayers = nlayers * 2
-	if h_degree ==0:
+    h_degree = degree[0]
+    v_degree = degree[1]
+    if v_degree == 0:
+       nlayers = nlayers * 2 
+    if h_degree ==0:
 	    ncoloumns = ncolumns * 2
 	m = PeriodicIntervalMesh(ncolumns, L)
 	mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
 	domain = Domain(mesh, dt, "CG", 
-			horizontal_degree=h_degree, 
-			vertical_degree=v_degree)
+        			horizontal_degree=h_degree, 
+		        	vertical_degree=v_degree)
 
 	# Equation
 	parameters = CompressibleParameters()
@@ -68,7 +68,7 @@ for degree in degrees:
 	    u_opts = RecoveryOptions(embedding_space=Vu_DG1,
 				recovered_space=Vu_CG1,
 				boundary_method=BoundaryMethod.taylor)
-	    rho_opts = RecoveryOptions(embedding_space=VDG1,
+        rho_opts = RecoveryOptions(embedding_space=VDG1,
 				recovered_space=VCG1,
 				boundary_method=BoundaryMethod.taylor)
 
