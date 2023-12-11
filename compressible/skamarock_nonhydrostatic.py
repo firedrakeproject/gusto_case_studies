@@ -51,6 +51,7 @@ for degree in degrees:
     Tsurf = 300.
     parameters = CompressibleParameters()
     eqns = CompressibleEulerEquations(domain, parameters)
+    print(f'Ideal number of cores = {eqns.X.function_space().dim() / 50000} ')
 
     # I/O
     points_x = np.linspace(0., L, 100)
