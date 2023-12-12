@@ -30,6 +30,7 @@ from firedrake import (ExtrudedMesh, ln,
 # Configuratio Options
 # -------------------------------------------------------------- #
 config = 'config4'
+variable_height = True
 dt = 1200.
 days = 200.
 tmax = days * 24. * 60. * 60.
@@ -68,6 +69,19 @@ elif config =='config7': # vector invariant embedded not limited
 
 a = 6.371229e6  # radius of earth
 ztop = 3.2e4  # max height
+
+if variable_height == True: 
+    layerheight=[]
+    runningheight=0
+    # Calculating Non-uniform height field
+    for m in range(1,nlayers+1):
+        mu = 8
+        height = ztop * ((mu * (m / nlayers)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
+        width = height - runningheight
+        runningheight = height
+        layerheight.append(width)
+else: 
+    layerheight = ztop / nlayers
 
 # Height field
 layerheight = ztop / nlayers
