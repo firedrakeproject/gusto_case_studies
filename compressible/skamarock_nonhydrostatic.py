@@ -57,7 +57,7 @@ for degree in degrees:
     points_x = np.linspace(0., L, 100)
     points_z = [H/2.]
     points = np.array([p for p in itertools.product(points_x, points_z)])
-    dirname = 'skamarock_klemp_nonlinear'
+    dirname = f'skamarock_klemp_nonlinear_h_order={h_degree}_v_order={v_degree}'
     output = OutputParameters(dirname=dirname,
                               dumpfreq=dumpfreq,
                               dumplist=['u'],
