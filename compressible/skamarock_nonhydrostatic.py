@@ -90,7 +90,7 @@ for degree in degrees:
 
     theta_opts = RecoveryOptions(embedding_space=VDG1,
 				                 recovered_space=VCG1)
-    transported_fields = [TrapeziumRule(domain, "u", options=u_opts),
+    transported_fields = [SSPRK3(domain, "u", options=u_opts),
                         SSPRK3(domain, "rho", options=rho_opts),
                         SSPRK3(domain, "theta", options=theta_opts)]
     transport_methods = [DGUpwind(eqns, "u"),
