@@ -90,12 +90,22 @@ for degree in degrees:
 
     theta_opts = RecoveryOptions(embedding_space=VDG1,
 				                 recovered_space=VCG1)
-    transported_fields = [SSPRK3(domain, "u", options=u_opts),
-                        SSPRK3(domain, "rho", options=rho_opts),
-                        SSPRK3(domain, "theta", options=theta_opts)]
-    transport_methods = [DGUpwind(eqns, "u"),
-                        DGUpwind(eqns, "rho"),
-                        DGUpwind(eqns, "theta")]
+    
+    if degree == (1,1):
+        theta_opts = EmbeddedDGOptions()
+        transported_fields = [SSPRK3(domain, "u"),
+                              SSPRK3(domain, "rho"),
+                              SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqns, "u"),
+                             DGUpwind(eqns, "rho"),
+                             DGUpwind(eqns, "theta", ibp=theta_opts.ibp)]
+    else:
+        transported_fields = [SSPRK3(domain, "u", options=u_opts),
+                             SSPRK3(domain, "rho", options=rho_opts),
+                             SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqns, "u"),
+                             DGUpwind(eqns, "rho"),
+                             DGUpwind(eqns, "theta")]
 
     # Linear solver
     linear_solver = CompressibleSolver(eqns)
