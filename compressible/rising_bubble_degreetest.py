@@ -24,7 +24,7 @@ ncolumns = int(L  /res)
 # ---------------------------------------------------------------------------- #
 # Set up model objects
 # ---------------------------------------------------------------------------- #
-degrees = [(0,1), (1,0), (1,1)]
+degrees = [(0,0), (0,1), (1,0), (1,1)]
 for degree in degrees:
 	# Domain
     h_degree = degree[0]
@@ -32,68 +32,62 @@ for degree in degrees:
     if v_degree == 0:
        nlayers = nlayers * 2 
     if h_degree ==0:
-	    ncoloumns = ncolumns * 2
-	m = PeriodicIntervalMesh(ncolumns, L)
-	mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
-	domain = Domain(mesh, dt, "CG", 
+       ncoloumns = ncolumns * 2
+    m = PeriodicIntervalMesh(ncolumns, L)
+    mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
+    domain = Domain(mesh, dt, "CG", 
         			horizontal_degree=h_degree, 
-		        	vertical_degree=v_degree)
+		            vertical_degree=v_degree)
 
 	# Equation
-	parameters = CompressibleParameters()
-	eqn = CompressibleEulerEquations(domain, parameters)
+    parameters = CompressibleParameters()
+    eqn = CompressibleEulerEquations(domain, parameters)
 	# I/O
-	dirname = f'RB_horiz={h_degree}_vertical={v_degree}_res={res}'
-	output = OutputParameters(dirname=dirname,
+    dirname = f'RB_horiz={h_degree}_vertical={v_degree}_res={res}'
+    output = OutputParameters(dirname=dirname,
 				  dumpfreq=dumpfreq,
 				  dumplist=['u'],
 				  dump_nc = True,
 				  dump_vtus = False)
-	diagnostic_fields = [CourantNumber(), Perturbation('theta'), Perturbation('rho')]
-	io = IO(domain, output, diagnostic_fields=diagnostic_fields)
+    diagnostic_fields = [CourantNumber(), Perturbation('theta'), Perturbation('rho')]
+    io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
-	VDG1 = domain.spaces("DG1_equispaced")
-	VCG1 = FunctionSpace(mesh, "CG", 1)
-	Vu_DG1 = VectorFunctionSpace(mesh, VDG1.ufl_element())
-	Vu_CG1 = VectorFunctionSpace(mesh, "CG", 1)
+    VDG1 = domain.spaces("DG1_equispaced")
+    VCG1 = FunctionSpace(mesh, "CG", 1)
+    Vu_DG1 = VectorFunctionSpace(mesh, VDG1.ufl_element())
+    Vu_CG1 = VectorFunctionSpace(mesh, "CG", 1)
 
-
-	u_opts = RecoveryOptions(embedding_space=Vu_DG1,
-				recovered_space=Vu_CG1)
-
-	rho_opts = RecoveryOptions(embedding_space=VDG1,
-				recovered_space=VCG1)
-
-	if v_degree == 0:
-	    u_opts = RecoveryOptions(embedding_space=Vu_DG1,
-				recovered_space=Vu_CG1,
-				boundary_method=BoundaryMethod.taylor)
+    u_opts = RecoveryOptions(embedding_space=Vu_DG1,
+				             recovered_space=Vu_CG1)
+    rho_opts = RecoveryOptions(embedding_space=VDG1,
+				               recovered_space=VCG1)
+    
+    if v_degree == 0:
+        u_opts = RecoveryOptions(embedding_space=Vu_DG1,
+				                 recovered_space=Vu_CG1,
+				                 boundary_method=BoundaryMethod.taylor)
         rho_opts = RecoveryOptions(embedding_space=VDG1,
-				recovered_space=VCG1,
-				boundary_method=BoundaryMethod.taylor)
+                                   recovered_space=VCG1,
+                                   boundary_method=BoundaryMethod.taylor)
 
-
-	theta_opts = RecoveryOptions(embedding_space=VDG1,
-				    recovered_space=VCG1)
-
-	transported_fields = []
-	transported_fields.append(SSPRK3(domain, "u", options=u_opts))
-	transported_fields.append(SSPRK3(domain, "rho", options=rho_opts))
-	transported_fields.append(SSPRK3(domain, "theta", options=theta_opts))
-
-	transport_methods = [DGUpwind(eqn, 'u'),
-			    DGUpwind(eqn, 'rho'),
-			    DGUpwind(eqn, 'theta')]
-
-	# Transport schemes
-	theta_opts = EmbeddedDGOptions()
-	transported_fields = [TrapeziumRule(domain, "u"),
-			      SSPRK3(domain, "rho"),
-			      SSPRK3(domain, "theta", options=theta_opts)]
-
-	transport_methods = [DGUpwind(eqn, "u"),
-			     DGUpwind(eqn, "rho"),
-			     DGUpwind(eqn, "theta")]
+    theta_opts = RecoveryOptions(embedding_space=VDG1,
+				                 recovered_space=VCG1)
+    
+    if degree == (1,1):
+        theta_opts = EmbeddedDGOptions()
+        transported_fields = [SSPRK3(domain, "u"),
+                              SSPRK3(domain, "rho"),
+                              SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqns, "u"),
+                             DGUpwind(eqns, "rho"),
+                             DGUpwind(eqns, "theta", ibp=theta_opts.ibp)]
+    else:
+        transported_fields = [SSPRK3(domain, "u", options=u_opts),
+                             SSPRK3(domain, "rho", options=rho_opts),
+                             SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqns, "u"),
+                             DGUpwind(eqns, "rho"),
+                             DGUpwind(eqns, "theta")]
 
 	# Linear solver
 	linear_solver = CompressibleSolver(eqn)
