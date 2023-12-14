@@ -89,51 +89,51 @@ for degree in degrees:
                              DGUpwind(eqns, "rho"),
                              DGUpwind(eqns, "theta")]
 
-	# Linear solver
-	linear_solver = CompressibleSolver(eqn)
+    # Linear solver
+    linear_solver = CompressibleSolver(eqn)
 
-	# Time stepper
-	stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
-					  transport_methods,
-					  linear_solver=linear_solver)
+    # Time stepper
+    stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
+					transport_methods,
+					linear_solver=linear_solver)
 
-	# ---------------------------------------------------------------------------- #
-	# Initial conditions
-	# ---------------------------------------------------------------------------- #
+    # ---------------------------------------------------------------------------- #
+    # Initial conditions
+    # ---------------------------------------------------------------------------- #
 
-	u0 = stepper.fields("u")
-	rho0 = stepper.fields("rho")
-	theta0 = stepper.fields("theta")
+    u0 = stepper.fields("u")
+    rho0 = stepper.fields("rho")
+    theta0 = stepper.fields("theta")
 
-	# spaces
-	Vu = domain.spaces("HDiv")
-	Vt = domain.spaces("theta")
-	Vr = domain.spaces("DG")
+    # spaces
+    Vu = domain.spaces("HDiv")
+    Vt = domain.spaces("theta")
+    Vr = domain.spaces("DG")
 
-	# Isentropic background state
-	Tsurf = Constant(300.)
+    # Isentropic background state
+    Tsurf = Constant(300.)
 
-	theta_b = Function(Vt).interpolate(Tsurf)
-	rho_b = Function(Vr)
+    theta_b = Function(Vt).interpolate(Tsurf)
+    rho_b = Function(Vr)
 
-	# Calculate hydrostatic exner
-	compressible_hydrostatic_balance(eqn, theta_b, rho_b, solve_for_rho=True)
+    # Calculate hydrostatic exner
+    compressible_hydrostatic_balance(eqn, theta_b, rho_b, solve_for_rho=True)
 
-	x = SpatialCoordinate(mesh)
-	xc = 500.
-	zc = 350.
-	rc = 250.
-	r = sqrt((x[0]-xc)**2 + (x[1]-zc)**2)
-	theta_pert = conditional(r > rc, 0., 0.25*(1. + cos((pi/rc)*r)))
+    x = SpatialCoordinate(mesh)
+    xc = 500.
+    zc = 350.
+    rc = 250.
+    r = sqrt((x[0]-xc)**2 + (x[1]-zc)**2)
+    theta_pert = conditional(r > rc, 0., 0.25*(1. + cos((pi/rc)*r)))
 
-	theta0.interpolate(theta_b + theta_pert)
-	rho0.interpolate(rho_b)
+    theta0.interpolate(theta_b + theta_pert)
+    rho0.interpolate(rho_b)
 
-	stepper.set_reference_profiles([('rho', rho_b),
-					('theta', theta_b)])
+    stepper.set_reference_profiles([('rho', rho_b),
+	     			                ('theta', theta_b)])
 
-	# ---------------------------------------------------------------------------- #
-	# Run
-	# ---------------------------------------------------------------------------- #
+    # ---------------------------------------------------------------------------- #
+    # Run
+    # ---------------------------------------------------------------------------- #
 
-	stepper.run(t=0, tmax=tmax)
+    stepper.run(t=0, tmax=tmax)
