@@ -18,7 +18,7 @@ from tomplot import (area_restriction, tomplot_contours, tomplot_cmap,
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 # When copying this example these should not be relative to this file
-results_dir = '/home/d-witt/firedrake/src/gusto/plotting/MyTomplots/HeldSuarez/Sigma_interpolation/HS_newbal_noforce'
+results_dir = '/home/d-witt/firedrake/src/gusto/plotting/MyTomplots/HeldSuarez/NewBal/HS_no_forcing_newbalance_oppositevel'
 plot_dir = f'{results_dir}/standard_plots'
 check_directory(plot_dir)
 results_file_name = f'{results_dir}/field_output.nc'
@@ -54,7 +54,7 @@ level = 0
 
 data_file = Dataset(results_file_name, 'r')
 time = data_file.variables['time'][:]
-time_idxs = np.arange(0, len(data_file.variables['time'][:]), 8)
+time_idxs = np.arange(0, len(data_file.variables['time'][:]), 16)
 
 for time_idx in time_idxs:
     fig, axarray = plt.subplots(2, 2, figsize=(16, 8), sharey='row')
