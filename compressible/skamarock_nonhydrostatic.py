@@ -7,7 +7,7 @@ from petsc4py import PETSc
 from gusto import *
 import itertools
 from firedrake import (as_vector, SpatialCoordinate, PeriodicIntervalMesh, TensorProductElement,
-                       ExtrudedMesh, exp, sin, Function, pi, FiniteElement, cell, interval)
+                       ExtrudedMesh, exp, sin, Function, pi, FiniteElement, quadrilateral, interval, HCurl, HDiv)
 import numpy as np
 import icecream as ic
 
@@ -15,8 +15,8 @@ import icecream as ic
 def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
     # scaler spaces
     DG_vert_ele = FiniteElement('DG', interval, vertical_degree+1, variant='equispaced')
-    DG_hori_ele = FiniteElement('DG', cell, horizontal_degree+1, variant='equispaced')
-    CG_hori_ele = FiniteElement('CG', cell, vertical_degree+1)
+    DG_hori_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1, variant='equispaced')
+    CG_hori_ele = FiniteElement('CG', quadrilateral, vertical_degree+1)
     CG_vert_ele = FiniteElement('CG', interval, vertical_degree+1)
 
     VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
@@ -24,20 +24,35 @@ def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
     VDG = FunctionSpace(mesh, VDG_ele)
     VCG = FunctionSpace(mesh, VCG_ele)
 
-    # vector_spaces
-    DG_hori_vec_ele = FiniteElement('DG', cell, horizontal_degree+2)
-    DG_vert_vec_ele = FiniteElement('DG', interval, horizontal_degree+2)
-    CG_hori_vec_ele = FiniteElement('hdiv', cell, horizontal_degree+2)
-    CG_vert_vec_ele = FiniteElement('hdiv', interval, horizontal_degree+2)
+    # VR space
+    Vrh_hori_ele = FiniteElement('RTCE', quadrilateral, horizontal_degree+1)
+    Vrh_vert_ele = FiniteElement('CG', interval, vertical_degree+1)
 
-    VDG_Vec_ele = TensorProductElement(DG_hori_vec_ele, DG_vert_vec_ele)
-    VCG_Vec_ele = TensorProductElement(CG_hori_vec_ele, CG_vert_vec_ele)
+    Vrv_hori_ele = FiniteElement('CG', quadrilateral, horizontal_degree+1)
+    Vrv_vert_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1)
 
-    Vu_DG = VectorFunctionSpace(mesh, VDG_Vec_ele)
-    Vu_CG = VectorFunctionSpace(mesh, VCG_Vec_ele)
+    Vrh_ele = HCurl(TensorProductElement(Vrh_hori_ele, Vrh_vert_ele))
+    Vrv_ele = HCurl(TensorProductElement(Vrv_hori_ele, Vrv_vert_ele))
 
-    u_opts = RecoveryOptions(embedding_space=Vu_DG,
-                             recovered_space=Vu_CG,
+    Vrh_ele = Vrh_ele + Vrv_ele
+    Vu_VR = FunctionSpace(mesh, Vrh_ele)
+
+    # Vh space
+    VHh_hori_ele = FiniteElement('RTCF', quadrilateral, horizontal_degree+1)
+    VHh_vert_ele = FiniteElement('DG', interval, vertical_degree+1)
+
+    VHv_hori_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1)
+    VHv_vert_ele = FiniteElement('CG', quadrilateral, horizontal_degree+1)
+
+    VHh_ele = HDiv(TensorProductElement(VHh_hori_ele, VHh_vert_ele))
+    VHv_ele = HDiv(TensorProductElement(VHv_hori_ele, VHv_vert_ele))
+
+    VHh_ele = VHh_ele + VHv_ele
+    Vu_VH = FunctionSpace(mesh, VHh_ele)
+
+
+    u_opts = RecoveryOptions(embedding_space=Vu_VR,
+                             recovered_space=Vu_VH,
                              boundary_method=BC)
     rho_opts = RecoveryOptions(embedding_space=VDG,
                                recovered_space=VCG,
@@ -78,7 +93,7 @@ for degree in degrees:
         nlayers = nlayers / 2
     m = PeriodicIntervalMesh(columns, L)
     mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
-    domain = Domain(mesh, dt, "CG",
+    domain = Domain(mesh, dt, "RT",
                     horizontal_degree=h_degree,
                     vertical_degree=v_degree)
     # Equation

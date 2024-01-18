@@ -1,4 +1,5 @@
 from gusto import *
+from gusto import thermodynamics
 from firedrake import (PeriodicRectangleMesh, ExtrudedMesh,
                        SpatialCoordinate, conditional, cos, sin, pi, sqrt,
                        ln, exp, Constant, Function, DirichletBC, as_vector,
@@ -6,6 +7,8 @@ from firedrake import (PeriodicRectangleMesh, ExtrudedMesh,
                        errornorm, norm, cross, grad)
 from firedrake.slope_limiter.vertex_based_limiter import VertexBasedLimiter
 import sys
+
+from gusto.diagnostics import CompressibleRelativeVorticity, Vorticity
 
 # ---------------------------------------------------------------------------- #
 # Test case parameters
@@ -56,8 +59,8 @@ eqns = CompressibleEulerEquations(domain, params, active_tracers=tracers,
 # I/O
 dirname = 'moist_baroclinic_channel'
 output = OutputParameters(dirname=dirname, dumpfreq=dumpfreq, dump_nc=True,
-                          dumplist=['cloud_water'], log_level='INFO')
-diagnostic_fields = [Perturbation('theta')]
+                          dumplist=['cloud_water'])
+diagnostic_fields = [Perturbation('theta'), CompressibleRelativeVorticity()]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes

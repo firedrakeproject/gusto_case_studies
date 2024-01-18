@@ -4,6 +4,7 @@ compressible Euler equations.
 """
 
 from gusto import *
+from gusto.diagnostics import CompressibleRelativeVorticity
 from firedrake import (as_vector, VectorFunctionSpace,
                        PeriodicIntervalMesh, ExtrudedMesh, SpatialCoordinate,
                        exp, pi, cos, Function, conditional, Mesh, op2)
@@ -25,8 +26,8 @@ if '--running-tests' in sys.argv:
 else:
     tmax = 9000.
     dumpfreq = int(tmax / (9*dt))
-    nlayers = 70  # horizontal layers
-    columns = 180  # number of columns
+    nlayers = 7  # horizontal layers
+    columns = 18  # number of columns
 
 # ---------------------------------------------------------------------------- #
 # Set up model objects
@@ -56,6 +57,7 @@ domain = Domain(mesh, dt, "CG", 1)
 # Equation
 parameters = CompressibleParameters(g=9.80665, cp=1004.)
 sponge = SpongeLayerParameters(H=H, z_level=H-10000, mubar=0.15/dt)
+print('making equations')
 eqns = CompressibleEulerEquations(domain, parameters, sponge=sponge)
 
 # I/O
@@ -63,9 +65,9 @@ dirname = 'nonhydrostatic_mountain'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
                           dumplist=['u'],
-                          log_level='INFO',
-                          checkpoint_method='dumbcheckpoint')
-diagnostic_fields = [CourantNumber(), VelocityZ(), Perturbation('theta'), Perturbation('rho')]
+                          dump_nc=True)
+diagnostic_fields = [CourantNumber(), Perturbation('theta'), Perturbation('rho'), CompressibleRelativeVorticity()]
+print('setting up io')
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes
