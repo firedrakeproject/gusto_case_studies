@@ -25,7 +25,7 @@ def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
     VCG = FunctionSpace(mesh, VCG_ele)
 
     # VR space
-    Vrh_hori_ele = FiniteElement('RTCE', quadrilateral, horizontal_degree+1)
+    Vrh_hori_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1)
     Vrh_vert_ele = FiniteElement('CG', interval, vertical_degree+1)
 
     Vrv_hori_ele = FiniteElement('CG', quadrilateral, horizontal_degree+1)
@@ -38,7 +38,7 @@ def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
     Vu_VR = FunctionSpace(mesh, Vrh_ele)
 
     # Vh space
-    VHh_hori_ele = FiniteElement('RTCF', quadrilateral, horizontal_degree+1)
+    VHh_hori_ele = FiniteElement('CG', quadrilateral, horizontal_degree+1)
     VHh_vert_ele = FiniteElement('DG', interval, vertical_degree+1)
 
     VHv_hori_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1)
