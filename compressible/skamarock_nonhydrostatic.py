@@ -13,23 +13,24 @@ import icecream as ic
 
 
 def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
-    # scaler spaces
+    # rho space
+    cell = mesh._base_mesh.ufl_cell().cellname()
+    DG_hori_ele = FiniteElement('DG', cell, horizontal_degree+1, variant='equispaced')
     DG_vert_ele = FiniteElement('DG', interval, vertical_degree+1, variant='equispaced')
-    DG_hori_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1, variant='equispaced')
-    CG_hori_ele = FiniteElement('CG', quadrilateral, vertical_degree+1)
-    CG_vert_ele = FiniteElement('CG', interval, vertical_degree+1)
+    CG_hori_ele = FiniteElement('CG', cell, horizontal_degree+1)
+    CG_vert_ele = FiniteElement('CG', interval, vertical_degree+2)
 
     VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
     VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
     VDG = FunctionSpace(mesh, VDG_ele)
     VCG = FunctionSpace(mesh, VCG_ele)
 
-    # VR space
-    Vrh_hori_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1)
+    # VR space for u transport
+    Vrh_hori_ele = FiniteElement('DG', cell, horizontal_degree+2)
     Vrh_vert_ele = FiniteElement('CG', interval, vertical_degree+1)
 
-    Vrv_hori_ele = FiniteElement('CG', quadrilateral, horizontal_degree+1)
-    Vrv_vert_ele = FiniteElement('DG', quadrilateral, horizontal_degree+1)
+    Vrv_hori_ele = FiniteElement('CG', cell, horizontal_degree+2)
+    Vrv_vert_ele = FiniteElement('DG', interval, horizontal_degree+1)
 
     Vrh_ele = HCurl(TensorProductElement(Vrh_hori_ele, Vrh_vert_ele))
     Vrv_ele = HCurl(TensorProductElement(Vrv_hori_ele, Vrv_vert_ele))
@@ -37,7 +38,7 @@ def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
     Vrh_ele = Vrh_ele + Vrv_ele
     Vu_VR = FunctionSpace(mesh, Vrh_ele)
 
-    # Vh space
+    # Vh space for u transport
     VHh_hori_ele = FiniteElement('CG', quadrilateral, horizontal_degree+1)
     VHh_vert_ele = FiniteElement('DG', interval, vertical_degree+1)
 
