@@ -1,10 +1,10 @@
 """
 The Travelling Vortex test case in a three dimensional channel
 """
-from math import atan2
+
 from gusto import *
 from firedrake import (PeriodicRectangleMesh, ExtrudedMesh, SpatialCoordinate, 
-                       Function, conditional, sqrt, as_vector, atan2)
+                       Function, conditional, sqrt, as_vector, atan_2)
 
 from gusto.diagnostics import (CompressibleAbsoluteVorticity, 
                                CompressibleRelativeVorticity)
@@ -86,7 +86,7 @@ v0 = 0
 w0 = 0
 T = 270
 
-phi = atan2((z - zc) /(x - xc))
+phi = atan_2((z - zc),(x - xc))
 u_r_expr = -1024 * sin(phi) * (1*r**2)**6 * r**6 + u0
 w_r_expr = 1024 * sin(phi) * (1*r**2)**6 * r**6 + w0
 
