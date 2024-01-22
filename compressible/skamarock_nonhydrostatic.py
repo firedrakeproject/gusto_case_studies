@@ -11,6 +11,81 @@ from firedrake import (as_vector, SpatialCoordinate, PeriodicIntervalMesh, Tenso
 import numpy as np
 import icecream as ic
 
+def MinimumRecoverySpaces(mesh, v_degree, h_degree, BC=None):
+    # rho space
+    h_order_dic = {}
+    v_order_dic = {}
+    h_order_dic['rho'] = {0: '1', 1: '1'}
+    h_order_dic['theta'] = {0: '1', 1: '1'}
+    h_order_dic['u'] = {0: '1', 1: '1'}
+    v_order_dic['rho'] = {0: '1', 1: '1'}
+    v_order_dic['theta'] = {0: '1', 1: '2'}
+    v_order_dic['u'] = {0: '1', 1: '1'}
+    cell = mesh._base_mesh.ufl_cell().cellname()
+
+    # rho space
+    DG_hori_ele = FiniteElement('DG', cell, h_order_dic['rho'][h_degree], variant='equispaced')
+    DG_vert_ele = FiniteElement('DG', interval, v_order_dic['rho'][v_degree], variant='equispaced')
+    CG_hori_ele = FiniteElement('CG', cell, h_order_dic['rho'][h_degree])
+    CG_vert_ele = FiniteElement('CG', interval, v_order_dic['rho'][v_degree])
+
+    VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
+    VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
+    VDG_rho= FunctionSpace(mesh, VDG_ele)
+    VCG_rho = FunctionSpace(mesh, VCG_ele)
+
+    # theta space
+    DG_hori_ele = FiniteElement('DG', cell, h_order_dic['theta'][h_degree], variant='equispaced')
+    DG_vert_ele = FiniteElement('DG', interval, v_order_dic['theta'][v_degree], variant='equispaced')
+    CG_hori_ele = FiniteElement('CG', cell, h_order_dic['theta'][h_degree])
+    CG_vert_ele = FiniteElement('CG', interval, v_order_dic['thea'][v_degree])
+
+    VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
+    VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
+    VDG_theta= FunctionSpace(mesh, VDG_ele)
+    VCG_theta = FunctionSpace(mesh, VCG_ele)
+
+    # VR space for u transport
+    Vrh_hori_ele = FiniteElement('DG', cell, h_order_dic['u'][h_degree])
+    Vrh_vert_ele = FiniteElement('CG', interval, v_order_dic['u'][v_degree]+1)
+
+    Vrv_hori_ele = FiniteElement('CG', cell, h_order_dic['u'][h_degree]+1)
+    Vrv_vert_ele = FiniteElement('DG', interval, v_order_dic['u'][v_degree])
+
+    Vrh_ele = HCurl(TensorProductElement(Vrh_hori_ele, Vrh_vert_ele))
+    Vrv_ele = HCurl(TensorProductElement(Vrv_hori_ele, Vrv_vert_ele))
+
+    Vrh_ele = Vrh_ele + Vrv_ele
+    Vu_VR = FunctionSpace(mesh, Vrh_ele)
+
+    # Vh space for u transport
+    VHh_hori_ele = FiniteElement('CG', cell, h_order_dic['u'][h_degree]+1)
+    VHh_vert_ele = FiniteElement('DG', interval,  v_order_dic['u'][v_degree])
+
+    VHv_hori_ele = FiniteElement('DG', cell, h_order_dic['u'][h_degree])
+    VHv_vert_ele = FiniteElement('CG', interval, v_order_dic['u'][v_degree]+1)
+
+    VHh_ele = HDiv(TensorProductElement(VHh_hori_ele, VHh_vert_ele))
+    VHv_ele = HDiv(TensorProductElement(VHv_hori_ele, VHv_vert_ele))
+
+    VHh_ele = VHh_ele + VHv_ele
+    Vu_VH = FunctionSpace(mesh, VHh_ele)
+
+
+    u_opts = RecoveryOptions(embedding_space=Vu_VH,
+                             recovered_space=Vu_VR,
+                             injection_method='recover',
+                             project_high_method='project',
+                             project_low_method='project',
+                             broken_method='project'
+                             )
+    rho_opts = RecoveryOptions(embedding_space=VDG_rho,
+                               recovered_space=VCG_rho,
+                               )
+    theta_opts = RecoveryOptions(embedding_space=VDG_theta,
+                                 recovered_space=VCG_theta)
+
+    return u_opts, rho_opts, theta_opts
 
 def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
     # rho space
@@ -98,14 +173,13 @@ for degree in degrees:
         nlayers = nlayers / 2
     m = PeriodicIntervalMesh(columns, L)
     mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
-    domain = Domain(mesh, dt, "RT",
+    domain = Domain(mesh, dt, "CG",
                     horizontal_degree=h_degree,
                     vertical_degree=v_degree)
     # Equation
     Tsurf = 300.
     parameters = CompressibleParameters()
     eqns = CompressibleEulerEquations(domain, parameters)
-    ic(eqns.X.function_space().dim())
     print(f'Ideal number of cores = {eqns.X.function_space().dim() / 50000}')
 
     # I/O
@@ -128,9 +202,9 @@ for degree in degrees:
 
     if degree in recovery_spaces:
         if v_degree == 0:
-            u_opts, rho_opts, theta_opts = RecoverySpaces(mesh, v_degree, h_degree, BC=BoundaryMethod.taylor)
+            u_opts, rho_opts, theta_opts = MinimumRecoverySpaces(mesh, v_degree, h_degree, BC=BoundaryMethod.taylor)
         else:
-            u_opts, rho_opts, theta_opts = RecoverySpaces(mesh, v_degree, h_degree)
+            u_opts, rho_opts, theta_opts = MinimumRecoverySpaces(mesh, v_degree, h_degree)
 
         transported_fields = [SSPRK3(domain, "u", options=u_opts),
                               SSPRK3(domain, "rho", options=rho_opts),
