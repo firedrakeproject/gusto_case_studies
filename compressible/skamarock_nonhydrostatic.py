@@ -161,16 +161,16 @@ dumpfreq = int(tmax / (4*dt))
 # ---------------------------------------------------------------------------- #
 
 # Domain -- 3D volume mesh
-degrees = [(0, 0), (1, 0), (0, 1)]
+degrees = [(0, 0), (1, 0), (0, 1), (1, 1)]
 for degree in degrees:
     h_degree = degree[0]
     v_degree = degree[1]
     nlayers = 10
     columns = 150
-    if h_degree > 1:
-        columns = columns / 2
-    if v_degree > 1:
-        nlayers = nlayers / 2
+    if v_degree == 0:
+       nlayers = nlayers * 2 
+    if h_degree ==0:
+       coloumns = columns * 2
     m = PeriodicIntervalMesh(columns, L)
     mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
     domain = Domain(mesh, dt, "CG",
@@ -201,10 +201,7 @@ for degree in degrees:
     recovery_spaces = ((0, 0), (0, 1), (1, 0))
 
     if degree in recovery_spaces:
-        if v_degree == 0:
-            u_opts, rho_opts, theta_opts = MinimumRecoverySpaces(mesh, v_degree, h_degree, BC=BoundaryMethod.taylor)
-        else:
-            u_opts, rho_opts, theta_opts = MinimumRecoverySpaces(mesh, v_degree, h_degree)
+        u_opts, rho_opts, theta_opts = RecoverySpaces(mesh, v_degree, h_degree)
 
         transported_fields = [SSPRK3(domain, "u", options=u_opts),
                               SSPRK3(domain, "rho", options=rho_opts),
