@@ -11,15 +11,71 @@ import sys
 # ---------------------------------------------------------------------------- #
 # Test case parameters
 # ---------------------------------------------------------------------------- #
+def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
+    # rho space
+    cell = mesh._base_mesh.ufl_cell().cellname()
+    DG_hori_ele = FiniteElement('DG', cell, horizontal_degree+1, variant='equispaced')
+    DG_vert_ele = FiniteElement('DG', interval, vertical_degree+1, variant='equispaced')
+    CG_hori_ele = FiniteElement('CG', cell, horizontal_degree+1)
+    CG_vert_ele = FiniteElement('CG', interval, vertical_degree+1)
 
-dt = 0.1
+    VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
+    VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
+    VDG = FunctionSpace(mesh, VDG_ele)
+    VCG = FunctionSpace(mesh, VCG_ele)
+
+    # VR space for u transport
+    Vrh_hori_ele = FiniteElement('DG', cell, horizontal_degree+1)
+    Vrh_vert_ele = FiniteElement('CG', interval, vertical_degree+2)
+
+    Vrv_hori_ele = FiniteElement('CG', cell, horizontal_degree+2)
+    Vrv_vert_ele = FiniteElement('DG', interval, horizontal_degree+1)
+
+    Vrh_ele = HCurl(TensorProductElement(Vrh_hori_ele, Vrh_vert_ele))
+    Vrv_ele = HCurl(TensorProductElement(Vrv_hori_ele, Vrv_vert_ele))
+
+    Vrh_ele = Vrh_ele + Vrv_ele
+    Vu_VR = FunctionSpace(mesh, Vrh_ele)
+
+    # Vh space for u transport
+    VHh_hori_ele = FiniteElement('CG', cell, horizontal_degree+2)
+    VHh_vert_ele = FiniteElement('DG', interval, vertical_degree+1)
+
+    VHv_hori_ele = FiniteElement('DG', cell, horizontal_degree+1)
+    VHv_vert_ele = FiniteElement('CG', interval, horizontal_degree+2)
+
+    VHh_ele = HDiv(TensorProductElement(VHh_hori_ele, VHh_vert_ele))
+    VHv_ele = HDiv(TensorProductElement(VHv_hori_ele, VHv_vert_ele))
+
+    VHh_ele = VHh_ele + VHv_ele
+    Vu_VH = FunctionSpace(mesh, VHh_ele)
+
+
+    u_opts = RecoveryOptions(embedding_space=Vu_VH,
+                             recovered_space=Vu_VR,
+                             injection_method='recover',
+                             project_high_method='project',
+                             project_low_method='project',
+                             broken_method='project'
+                             )
+    rho_opts = RecoveryOptions(embedding_space=VDG,
+                               recovered_space=VCG,
+                               )
+    theta_opts = RecoveryOptions(embedding_space=VDG,
+                                 recovered_space=VCG)
+
+    return u_opts, rho_opts, theta_opts
+
+
+dt = 1
 L = 1000.
 H = 1000.
 tmax = 600.
 dumpfreq = int(tmax / (60*dt))
-res = 5.
-nlayers = int(H / res)
-ncolumns = int(L  /res)
+dz = 50.
+dx = 50.
+nlayers = int(H / dz)
+ncolumns = int(L / dx)
 
 # ---------------------------------------------------------------------------- #
 # Set up model objects
@@ -43,7 +99,7 @@ for degree in degrees:
     parameters = CompressibleParameters()
     eqn = CompressibleEulerEquations(domain, parameters)
 	# I/O
-    dirname = f'RB_horiz={h_degree}_vertical={v_degree}_res={res}'
+    dirname = f'RB_horiz={h_degree}_vertical={v_degree}_fixed'
     output = OutputParameters(dirname=dirname,
 				  dumpfreq=dumpfreq,
 				  dumplist=['u'],
@@ -52,42 +108,26 @@ for degree in degrees:
     diagnostic_fields = [CourantNumber(), Perturbation('theta'), Perturbation('rho')]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
-    VDG1 = domain.spaces("DG1_equispaced")
-    VCG1 = FunctionSpace(mesh, "CG", 1)
-    Vu_DG1 = VectorFunctionSpace(mesh, VDG1.ufl_element())
-    Vu_CG1 = VectorFunctionSpace(mesh, "CG", 1)
+    recovery_spaces = ((0, 0), (0, 1), (1, 0))
 
-    u_opts = RecoveryOptions(embedding_space=Vu_DG1,
-				             recovered_space=Vu_CG1)
-    rho_opts = RecoveryOptions(embedding_space=VDG1,
-				               recovered_space=VCG1)
-    
-    if v_degree == 0:
-        u_opts = RecoveryOptions(embedding_space=Vu_DG1,
-				                 recovered_space=Vu_CG1,
-				                 boundary_method=BoundaryMethod.taylor)
-        rho_opts = RecoveryOptions(embedding_space=VDG1,
-                                   recovered_space=VCG1,
-                                   boundary_method=BoundaryMethod.taylor)
+    if degree in recovery_spaces:
+        u_opts, rho_opts, theta_opts = RecoverySpaces(mesh, v_degree, h_degree)
 
-    theta_opts = RecoveryOptions(embedding_space=VDG1,
-				                 recovered_space=VCG1)
-    
-    if degree == (1,1):
+        transported_fields = [SSPRK3(domain, "u", options=u_opts),
+                              SSPRK3(domain, "rho", options=rho_opts),
+                              SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqn, "u"),
+                             DGUpwind(eqn, "rho"),
+                             DGUpwind(eqn, "theta")]
+    else:
+
         theta_opts = EmbeddedDGOptions()
         transported_fields = [SSPRK3(domain, "u"),
                               SSPRK3(domain, "rho"),
                               SSPRK3(domain, "theta", options=theta_opts)]
-        transport_methods = [DGUpwind(eqns, "u"),
-                             DGUpwind(eqns, "rho"),
-                             DGUpwind(eqns, "theta", ibp=theta_opts.ibp)]
-    else:
-        transported_fields = [SSPRK3(domain, "u", options=u_opts),
-                             SSPRK3(domain, "rho", options=rho_opts),
-                             SSPRK3(domain, "theta", options=theta_opts)]
-        transport_methods = [DGUpwind(eqns, "u"),
-                             DGUpwind(eqns, "rho"),
-                             DGUpwind(eqns, "theta")]
+        transport_methods = [DGUpwind(eqn, "u"),
+                             DGUpwind(eqn, "rho"),
+                             DGUpwind(eqn, "theta")]
 
     # Linear solver
     linear_solver = CompressibleSolver(eqn)
