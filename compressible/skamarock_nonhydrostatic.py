@@ -147,12 +147,9 @@ def RecoverySpaces(mesh, vertical_degree, horizontal_degree, BC=None):
 # Test case parameters
 # ---------------------------------------------------------------------------- #
 
-dt = 6.
+dt = 1.2
 L = 3.0e5  # Domain length
 H = 1.0e4  # Height position of the model top
-
-nlayers = 10
-columns = 150
 tmax = 3600
 dumpfreq = int(tmax / (4*dt))
 
@@ -165,12 +162,14 @@ degrees = [(0, 0), (1, 0), (0, 1), (1, 1)]
 for degree in degrees:
     h_degree = degree[0]
     v_degree = degree[1]
-    nlayers = 10
-    columns = 150
+    dx = 200
+    dz = 200
     if v_degree == 0:
-       nlayers = nlayers * 2 
+       dz = dz / 2
     if h_degree ==0:
-       coloumns = columns * 2
+       dx = dx / 2
+    nlayers = int(H / dz)
+    columns = int(L / dx)
     m = PeriodicIntervalMesh(columns, L)
     mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers)
     domain = Domain(mesh, dt, "CG",
@@ -183,10 +182,7 @@ for degree in degrees:
     print(f'Ideal number of cores = {eqns.X.function_space().dim() / 50000}')
 
     # I/O
-    points_x = np.linspace(0., L, 100)
-    points_z = [H/2.]
-    points = np.array([p for p in itertools.product(points_x, points_z)])
-    dirname = f'gravwave_recovery={h_degree}_v_order={v_degree}'
+    dirname = f'gravwave_HighRes_h={h_degree}_v={v_degree}'
     output = OutputParameters(dirname=dirname,
                               dumpfreq=dumpfreq,
                               dumplist=['u'],
