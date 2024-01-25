@@ -72,8 +72,8 @@ L = 1000.
 H = 1000.
 tmax = 600.
 dumpfreq = int(tmax / (60*dt))
-dz = 50.
-dx = 50.
+dz = 10.
+dx = 10.
 nlayers = int(H / dz)
 ncolumns = int(L / dx)
 
@@ -99,7 +99,7 @@ for degree in degrees:
     parameters = CompressibleParameters()
     eqn = CompressibleEulerEquations(domain, parameters)
 	# I/O
-    dirname = f'RB_horiz={h_degree}_vertical={v_degree}_fixed'
+    dirname = f'RB_horiz={h_degree}_vertical={v_degree}_10Res'
     output = OutputParameters(dirname=dirname,
 				  dumpfreq=dumpfreq,
 				  dumplist=['u'],
