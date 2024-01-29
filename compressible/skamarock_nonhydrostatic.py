@@ -7,20 +7,20 @@ from petsc4py import PETSc
 from gusto import *
 import itertools
 from firedrake import (as_vector, SpatialCoordinate, PeriodicIntervalMesh, TensorProductElement,
-                       ExtrudedMesh, exp, sin, Function, pi, FiniteElement, quadrilateral, interval, HCurl, HDiv)
+                       ExtrudedMesh, exp, sin, Function, pi, FiniteElement, interval, HCurl, HDiv)
 import numpy as np
 import icecream as ic
 
-def MinimumRecoverySpaces(mesh, v_degree, h_degree, BC=None):
+def ConstRecoverySpaces(mesh, v_degree, h_degree, BC=None):
     # rho space
     h_order_dic = {}
     v_order_dic = {}
-    h_order_dic['rho'] = {0: '1', 1: '1'}
-    h_order_dic['theta'] = {0: '1', 1: '1'}
-    h_order_dic['u'] = {0: '1', 1: '1'}
-    v_order_dic['rho'] = {0: '1', 1: '1'}
-    v_order_dic['theta'] = {0: '1', 1: '2'}
-    v_order_dic['u'] = {0: '1', 1: '1'}
+    h_order_dic['rho'] = {0: 1, 1: 1}
+    h_order_dic['theta'] = {0: 1, 1: 1}
+    h_order_dic['u'] = {0: 1, 1: 1}
+    v_order_dic['rho'] = {0: 1, 1: 1}
+    v_order_dic['theta'] = {0: 2, 1: 2}
+    v_order_dic['u'] = {0: 1, 1: 1}
     cell = mesh._base_mesh.ufl_cell().cellname()
 
     # rho space
@@ -38,7 +38,7 @@ def MinimumRecoverySpaces(mesh, v_degree, h_degree, BC=None):
     DG_hori_ele = FiniteElement('DG', cell, h_order_dic['theta'][h_degree], variant='equispaced')
     DG_vert_ele = FiniteElement('DG', interval, v_order_dic['theta'][v_degree], variant='equispaced')
     CG_hori_ele = FiniteElement('CG', cell, h_order_dic['theta'][h_degree])
-    CG_vert_ele = FiniteElement('CG', interval, v_order_dic['thea'][v_degree])
+    CG_vert_ele = FiniteElement('CG', interval, v_order_dic['theta'][v_degree])
 
     VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
     VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
@@ -162,12 +162,11 @@ degrees = [(0, 0), (1, 0), (0, 1), (1, 1)]
 for degree in degrees:
     h_degree = degree[0]
     v_degree = degree[1]
-    dx = 200
-    dz = 200
-    if v_degree == 0:
-       dz = dz / 2
-    if h_degree ==0:
-       dx = dx / 2
+    res = 100.0
+    if v_degree == 1:
+       dz = res * 2
+    if h_degree == 1:
+       dx = res * 2
     nlayers = int(H / dz)
     columns = int(L / dx)
     m = PeriodicIntervalMesh(columns, L)
@@ -182,7 +181,7 @@ for degree in degrees:
     print(f'Ideal number of cores = {eqns.X.function_space().dim() / 50000}')
 
     # I/O
-    dirname = f'gravwave_HighRes_h={h_degree}_v={v_degree}'
+    dirname = f'GW_convergence_order={h_degree}_{v_degree}_res={res}'
     output = OutputParameters(dirname=dirname,
                               dumpfreq=dumpfreq,
                               dumplist=['u'],
