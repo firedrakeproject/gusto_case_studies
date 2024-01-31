@@ -12,22 +12,23 @@ from gusto.diagnostics import (CompressibleAbsoluteVorticity,
 
 
 tmax = 100
-dt = 1
-dumpfreq = 25
+dt = 0.5
+dumpfreq = int(tmax / (10*dt))
 degree = (1, 1)
 
 uc = 100.
 vc = 100.
 L = 10000.
 H = 10000.
-
+nlayers = 32
+ncolumns = 32
 
 t = 0.
 delx = 100.
 nx = int(L/delx)
 
-m = PeriodicIntervalMesh(nx, L)
-mesh = ExtrudedMesh(m, layers=nx, layer_height=delx, periodic=True)
+m = PeriodicIntervalMesh(ncolumns, L)
+mesh = ExtrudedMesh(m, layers=nlayers, layer_height=H/nlayers, periodic=True)
 x, y = SpatialCoordinate(mesh)
 domain = Domain(mesh, dt, 'CG',  horizontal_degree=degree[0], 
                 vertical_degree=degree[1])
@@ -36,6 +37,7 @@ domain = Domain(mesh, dt, 'CG',  horizontal_degree=degree[0],
 # Equations
 params = CompressibleParameters(g=0)
 eqns = CompressibleEulerEquations(domain, params)
+eqns.bcs['u'] = []
 print(f'ideal number of processors = {eqns.X.function_space().dim() / 50000}')
 
 #I/O
@@ -46,7 +48,7 @@ io = IO(domain, output, diagnostic_fields=diagnostics)
 
 #Transport options
 theta_opts = EmbeddedDGOptions()
-transported_fields = [SSPRK3(domain, "u"),
+transported_fields = [TrapeziumRule(domain, "u"),
                       SSPRK3(domain, "rho"),
                       SSPRK3(domain, "theta", options=theta_opts)]
 transport_methods = [DGUpwind(eqns, "u"),
@@ -62,14 +64,14 @@ stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
 # Initial conditions
 # ------------------------------------------------------------------------------
 # initial fields
-u = stepper.fields('u')
-rho = stepper.fields('rho')
-theta = stepper.fields('theta')
+u0 = stepper.fields('u')
+rho0 = stepper.fields('rho')
+theta0 = stepper.fields('theta')
 
 # spaces
-Vu = u.function_space()
-Vt = theta.function_space()
-Vr = rho.function_space()
+Vu = u0.function_space()
+Vt = theta0.function_space()
+Vr = rho0.function_space()
 
 # constants
 kappa = params.kappa
@@ -77,20 +79,19 @@ p_0 = params.p_0
 xc = L / 2  
 yc = L / 2 
 
-R = 0.4*L # radius of voertex
+R = 0.4 * L # radius of voertex
 r = sqrt(x**2 + y**2) / R
 phi = atan2((y - yc),(x - xc))
 
 # rho expression
 rhoc = 1
-rho_r_expr = 1 - 1/2*(1 - r**2)**6
-rho0 = conditional(r>=1, rhoc, rho_r_expr)
+rhob = Function(Vr).interpolate(conditional(r>=1, rhoc,  1- 0.5*(1-r**2)**6))
 
 # u expression
 u_cond = (1024 * (1.0 - r)**6 * r**6 )
 ux_expr = conditional(r>=1, uc, uc + u_cond * (-(y-yc)/(r*R))) 
 uy_expr = conditional(r>=1, vc, vc + u_cond * (-(x-xc)/(r*R))) 
-u0 = as_vector([ux_expr, uy_expr])
+u0.project(as_vector([ux_expr, uy_expr]))
 
 #pressure and theta expressions
 coe = np.zeros((25))
@@ -119,30 +120,29 @@ coe[21] =    74.0 / 33.0
 coe[22] = -  15.0 / 17.0
 coe[23] =     6.0 / 35.0
 coe[24] =  -  1.0 / 72.0
+
 p0 = 0
 for i in range(25):
     p0 += coe[i] * (r**(12+i)-1)
 mach = 0.341
-p0 = 1 + 1024**2 * mach *conditional(r>=1, 0, p0)
-Rd = params.R_d
+p = 1 + 1024**2 * mach**2 *conditional(r>=1, 0, p)
+
+R0 = 287.
 gamma=1.4
 pref=params.p_0
 
-T0 = p0 / (rho0*Rd)
-theta0 = T0*(pref / p0)**0.286
-u.project(u0)
-rho.interpolate(rho0)
-theta.interpolate(theta0)
+T = p / (rhob*R0)
+thetab = Function(Vt).interpolate(T*(pref / p)**0.286)
 #compressible_hydrostatic_balance(eqns, theta, rho, solve_for_rho=True)
 
 # make mean fields
 print('make mean fields')
-rho_b = Function(Vr).assign(rho)
-theta_b = Function(Vt).assign(theta)
+theta0.assign(thetab)
+rho0.assign(rhob)
 
 # assign reference profiles
-stepper.set_reference_profiles([('rho', rho_b),
-                                ('theta', theta_b)])
+stepper.set_reference_profiles([('rho', rhob),
+                                ('theta', thetab)])
 # ---------------------------------------------------------------------------- #
 # Run
 # ---------------------------------------------------------------------------- #
