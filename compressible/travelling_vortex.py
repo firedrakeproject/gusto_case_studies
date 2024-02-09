@@ -4,10 +4,88 @@ The Travelling Vortex test case in a three dimensional channel
 
 from gusto import *
 from firedrake import (PeriodicIntervalMesh, ExtrudedMesh, SpatialCoordinate, 
-                       Function, conditional, sqrt, as_vector, atan2)
+                       Function, conditional, sqrt, as_vector, atan2, FiniteElement, interval,
+                       TensorProductElement, HCurl, HDiv)
 
 from gusto.diagnostics import (CompressibleAbsoluteVorticity, 
                                CompressibleRelativeVorticity)
+
+
+def ConstRecoverySpaces(mesh, v_degree, h_degree, BC=None):
+    # rho space
+    h_order_dic = {}
+    v_order_dic = {}
+    h_order_dic['rho'] = {0: 1, 1: 1}
+    h_order_dic['theta'] = {0: 1, 1: 1}
+    h_order_dic['u'] = {0: 1, 1: 1}
+    v_order_dic['rho'] = {0: 1, 1: 1}
+    v_order_dic['theta'] = {0: 2, 1: 2}
+    v_order_dic['u'] = {0: 1, 1: 1}
+    cell = mesh._base_mesh.ufl_cell().cellname()
+
+    # rho space
+    DG_hori_ele = FiniteElement('DG', cell, h_order_dic['rho'][h_degree], variant='equispaced')
+    DG_vert_ele = FiniteElement('DG', interval, v_order_dic['rho'][v_degree], variant='equispaced')
+    CG_hori_ele = FiniteElement('CG', cell, h_order_dic['rho'][h_degree])
+    CG_vert_ele = FiniteElement('CG', interval, v_order_dic['rho'][v_degree])
+
+    VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
+    VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
+    VDG_rho= FunctionSpace(mesh, VDG_ele)
+    VCG_rho = FunctionSpace(mesh, VCG_ele)
+
+    # theta space
+    DG_hori_ele = FiniteElement('DG', cell, h_order_dic['theta'][h_degree], variant='equispaced')
+    DG_vert_ele = FiniteElement('DG', interval, v_order_dic['theta'][v_degree], variant='equispaced')
+    CG_hori_ele = FiniteElement('CG', cell, h_order_dic['theta'][h_degree])
+    CG_vert_ele = FiniteElement('CG', interval, v_order_dic['theta'][v_degree])
+
+    VDG_ele = TensorProductElement(DG_hori_ele, DG_vert_ele)
+    VCG_ele = TensorProductElement(CG_hori_ele, CG_vert_ele)
+    VDG_theta= FunctionSpace(mesh, VDG_ele)
+    VCG_theta = FunctionSpace(mesh, VCG_ele)
+
+    # VR space for u transport
+    Vrh_hori_ele = FiniteElement('DG', cell, h_order_dic['u'][h_degree])
+    Vrh_vert_ele = FiniteElement('CG', interval, v_order_dic['u'][v_degree]+1)
+
+    Vrv_hori_ele = FiniteElement('CG', cell, h_order_dic['u'][h_degree]+1)
+    Vrv_vert_ele = FiniteElement('DG', interval, v_order_dic['u'][v_degree])
+
+    Vrh_ele = HCurl(TensorProductElement(Vrh_hori_ele, Vrh_vert_ele))
+    Vrv_ele = HCurl(TensorProductElement(Vrv_hori_ele, Vrv_vert_ele))
+
+    Vrh_ele = Vrh_ele + Vrv_ele
+    Vu_VR = FunctionSpace(mesh, Vrh_ele)
+
+    # Vh space for u transport
+    VHh_hori_ele = FiniteElement('CG', cell, h_order_dic['u'][h_degree]+1)
+    VHh_vert_ele = FiniteElement('DG', interval,  v_order_dic['u'][v_degree])
+
+    VHv_hori_ele = FiniteElement('DG', cell, h_order_dic['u'][h_degree])
+    VHv_vert_ele = FiniteElement('CG', interval, v_order_dic['u'][v_degree]+1)
+
+    VHh_ele = HDiv(TensorProductElement(VHh_hori_ele, VHh_vert_ele))
+    VHv_ele = HDiv(TensorProductElement(VHv_hori_ele, VHv_vert_ele))
+
+    VHh_ele = VHh_ele + VHv_ele
+    Vu_VH = FunctionSpace(mesh, VHh_ele)
+
+
+    u_opts = RecoveryOptions(embedding_space=Vu_VH,
+                             recovered_space=Vu_VR,
+                             injection_method='recover',
+                             project_high_method='project',
+                             project_low_method='project',
+                             broken_method='project'
+                             )
+    rho_opts = RecoveryOptions(embedding_space=VDG_rho,
+                               recovered_space=VCG_rho,
+                               )
+    theta_opts = RecoveryOptions(embedding_space=VDG_theta,
+                                 recovered_space=VCG_theta)
+
+    return u_opts, rho_opts, theta_opts
 
 
 
@@ -52,14 +130,27 @@ for order in orders:
     diagnostics = [XComponent('u'), ZComponent('u'),  Pressure(eqns)]
     io = IO(domain, output, diagnostic_fields=diagnostics)
 
-    #Transport options
-    theta_opts = EmbeddedDGOptions()
-    transported_fields = [TrapeziumRule(domain, "u"),
-                        SSPRK3(domain, "rho"),
-                        SSPRK3(domain, "theta", options=theta_opts)]
-    transport_methods = [DGUpwind(eqns, "u"),
-                        DGUpwind(eqns, "rho"),
-                        DGUpwind(eqns, "theta")]
+    # Transport options
+    recovery_spaces = ((0, 0), (0, 1), (1, 0))
+
+    if degree in recovery_spaces:
+        u_opts, rho_opts, theta_opts = ConstRecoverySpaces(mesh, order[1], order[0])
+
+        transported_fields = [SSPRK3(domain, "u", options=u_opts),
+                              SSPRK3(domain, "rho", options=rho_opts),
+                              SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqns, "u"),
+                             DGUpwind(eqns, "rho"),
+                             DGUpwind(eqns, "theta")]
+    else:
+
+        theta_opts = EmbeddedDGOptions()
+        transported_fields = [SSPRK3(domain, "u"),
+                              SSPRK3(domain, "rho"),
+                              SSPRK3(domain, "theta", options=theta_opts)]
+        transport_methods = [DGUpwind(eqns, "u"),
+                             DGUpwind(eqns, "rho"),
+                             DGUpwind(eqns, "theta")]
     # solver
     linear_solver = CompressibleSolver(eqns)
     # timestepper
