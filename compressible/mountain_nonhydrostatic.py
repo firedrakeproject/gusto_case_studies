@@ -63,9 +63,8 @@ dirname = 'nonhydrostatic_mountain'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
                           dumplist=['u'],
-                          log_level='INFO',
                           checkpoint_method='dumbcheckpoint')
-diagnostic_fields = [CourantNumber(), VelocityZ(), Perturbation('theta'), Perturbation('rho')]
+diagnostic_fields = [CourantNumber(), ZComponent('u'), Perturbation('theta'), Perturbation('rho')]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes
@@ -83,7 +82,8 @@ linear_solver = CompressibleSolver(eqns)
 # Time stepper
 stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
                                   transport_methods,
-                                  linear_solver=linear_solver)
+                                  linear_solver=linear_solver,
+                                  num_outer=2, num_inner=2)
 
 # ---------------------------------------------------------------------------- #
 # Initial conditions
