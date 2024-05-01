@@ -24,7 +24,7 @@ if '--running-tests' in sys.argv:
     ncolumns = int(L/50.)
 else:
     tmax = 600.
-    dumpfreq = int(tmax / (6*dt))
+    dumpfreq = int(tmax / (12*dt))
     nlayers = int(H/10.)
     ncolumns = int(L/10.)
 
@@ -45,8 +45,7 @@ eqns = CompressibleEulerEquations(domain, parameters)
 dirname = 'robert_bubble'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
-                          dumplist=['u'],
-                          log_level='INFO')
+                          dumplist=['u'])
 diagnostic_fields = [CourantNumber(), Perturbation('theta'), Perturbation('rho')]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -66,7 +65,8 @@ linear_solver = CompressibleSolver(eqns)
 # Time stepper
 stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
                                   transport_methods,
-                                  linear_solver=linear_solver)
+                                  linear_solver=linear_solver,
+                                  num_outer=4, num_inner=1)
 
 # ---------------------------------------------------------------------------- #
 # Initial conditions
