@@ -40,11 +40,7 @@ if variable_height is True:
     runningheight = 0
     # Calculating Non-uniform height field
     for m in range(1, nlayers+1):
-        mu = 3
-        if nlayers == 15:
-            mu = 15
-        if nlayers == 30:
-            mu = 15
+        mu = 15
         height = ztop * ((mu * (m / nlayers)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
         width = height - runningheight
         runningheight = height
@@ -59,7 +55,7 @@ domain = Domain(mesh, dt, "RTCF", horizontal_degree=order[0], vertical_degree=or
 # Equations
 params = CompressibleParameters()
 omega = Constant(7.292e-5)
-Omega = as_vector(0, 0, omega)
+Omega = as_vector([0, 0, omega])
 print('making eqn')
 eqn = CompressibleEulerEquations(domain, params, Omega=Omega, u_transport_option=u_form)
 print(f'Optimal Cores = {eqn.X.function_space().dim() / 50000}')
