@@ -48,7 +48,7 @@ jobs:
         run: |
           mkdir logs
           cd /tmp/pytest-of-firedrake/pytest-0/
-          find . -name "*.log" -exec cp --parents {} /__w/gusto/gusto/logs/ \;
+          find . -name "*.log" -exec cp --parents {} /__w/gusto_case_studies/gusto_case_studies/logs/ \;
       - name: Upload artifact
         if: always()
         uses: actions/upload-pages-artifact@v1
