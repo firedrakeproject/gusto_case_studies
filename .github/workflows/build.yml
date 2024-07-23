@@ -54,6 +54,6 @@ jobs:
         uses: actions/upload-pages-artifact@v1
         with:
           name: log-files
-          path: /__w/gusto/gusto/logs
+          path: /__w/gusto_case_studies/gusto_case_studies/logs
           retention-days: 5
 
