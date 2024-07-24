@@ -1,4 +1,4 @@
-from baroclinic_wave import baroclinic
+from dry_baroclinic_sphere import dry_baroclinic_sphere
 
-def test_baroclinic_wave():
-    baroclinic((1, 1), 0.5, 7, 0.0001, 0.0002, 0.5, variable_height, u_form)
+def test_dry_baroclinic_sphere():
+    dry_baroclinic_sphere(4, 3, 900.0, 1800.0, 2)
