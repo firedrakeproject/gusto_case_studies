@@ -10,17 +10,22 @@ This setup uses a cubed-sphere with the order 1 finite elements.
 """
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
-from firedrake import (ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt,
-                       exp, Constant, Function, as_vector, acos, errornorm,
-                       norm, le, ge, conditional, NonlinearVariationalProblem,
-                       NonlinearVariationalSolver, TestFunction, inner, dx)
-from gusto import (Domain, GeneralCubedSphereMesh, CompressibleParameters,
-                   CompressibleEulerEquations, OutputParameters, IO,
-                   EmbeddedDGOptions, SSPRK3, DGUpwind, CompressibleSolver,
-                   SemiImplicitQuasiNewton, lonlatr_from_xyz,
-                   xyz_vector_from_lonlatr, compressible_hydrostatic_balance)
+from firedrake import (
+    ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt, exp, Constant,
+    Function, as_vector, acos, errornorm, norm, le, ge, conditional,
+    NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction,
+    inner, dx)
+from gusto import (
+    Domain, GeneralCubedSphereMesh, CompressibleParameters, CompressibleSolver,
+    CompressibleEulerEquations, OutputParameters, IO, EmbeddedDGOptions, SSPRK3,
+    DGUpwind, logger, SemiImplicitQuasiNewton, lonlatr_from_xyz,
+    xyz_vector_from_lonlatr, compressible_hydrostatic_balance)
 
-def dry_baroclinic_sphere(ncell_per_edge, nlayers, dt, tmax, dumpfreq, dirname):
+fifteen_days = 15.*24.*60.*60.
+
+def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
+                          tmax=fifteen_days, dumpfreq=48,
+                          dirname='dry_baroclinic_sphere'):
 
     # ------------------------------------------------------------------------ #
     # Parameters for test case
@@ -184,8 +189,8 @@ def dry_baroclinic_sphere(ncell_per_edge, nlayers, dt, tmax, dumpfreq, dirname):
 
     # Obtain initial conditions -- set up projection manually to
     # manually specify a reduced quadrature degree
-    print('Set up initial conditions')
-    print('project u')
+    logger.info('Set up initial conditions')
+    logger.debug('project u')
     test_u = TestFunction(Vu)
     dx_reduced = dx(degree=4)
     u_field = zonal_u*e_lon + merid_u * e_lat + radial_u * e_r
@@ -194,20 +199,18 @@ def dry_baroclinic_sphere(ncell_per_edge, nlayers, dt, tmax, dumpfreq, dirname):
     u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
     u_proj_solver.solve()
 
-    print('interpolate theta')
+
     theta0.interpolate(theta_expr)
-    print('find exner')
     exner = Function(Vr).interpolate(exner_expr)
-    print('find rho')
     rho0.interpolate(rho_expr)
+
+    logger.info('find rho by solving hydrostatic balance')
     compressible_hydrostatic_balance(eqn, theta0, rho0, exner_boundary=exner, solve_for_rho=True)
 
-    print('make analytic rho')
     rho_analytic = Function(Vr).interpolate(rho_expr)
-    print('Normalised rho error is:', errornorm(rho_analytic, rho0) / norm(rho_analytic))
+    logger.info(f'Normalised rho error is: {errornorm(rho_analytic, rho0) / norm(rho_analytic)}')
 
     # make mean fields
-    print('make mean fields')
     rho_b = Function(Vr).assign(rho0)
     theta_b = Function(Vt).assign(theta0)
 
