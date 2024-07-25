@@ -14,18 +14,32 @@ from firedrake import (
     ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt, exp, Constant,
     Function, as_vector, acos, errornorm, norm, le, ge, conditional,
     NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction,
-    inner, dx)
+    inner, dx
+)
 from gusto import (
     Domain, GeneralCubedSphereMesh, CompressibleParameters, CompressibleSolver,
     CompressibleEulerEquations, OutputParameters, IO, EmbeddedDGOptions, SSPRK3,
     DGUpwind, logger, SemiImplicitQuasiNewton, lonlatr_from_xyz,
-    xyz_vector_from_lonlatr, compressible_hydrostatic_balance)
+    xyz_vector_from_lonlatr, compressible_hydrostatic_balance
+)
 
-fifteen_days = 15.*24.*60.*60.
+dry_baroclinic_sphere_defaults = {
+    'ncell_per_edge': 16,
+    'nlayers': 15,
+    'dt': 900.0,               # 15 minutes
+    'tmax': 15.*24.*60.*60.,   # 15 days
+    'dumpfreq': 48,            # Corresponds to every 12 hours with default opts
+    'dirname': 'dry_baroclinic_sphere'
+}
 
-def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
-                          tmax=fifteen_days, dumpfreq=48,
-                          dirname='dry_baroclinic_sphere'):
+
+def dry_baroclinic_sphere(
+        ncell_per_edge=dry_baroclinic_sphere_defaults['ncell_per_edge'],
+        nlayers=dry_baroclinic_sphere_defaults['nlayers'],
+        dt=dry_baroclinic_sphere_defaults['dt'],
+        tmax=dry_baroclinic_sphere_defaults['tmax'],
+        dumpfreq=dry_baroclinic_sphere_defaults['dumpfreq'],
+        dirname=dry_baroclinic_sphere_defaults['dirname']):
 
     # ------------------------------------------------------------------------ #
     # Parameters for test case
@@ -59,29 +73,34 @@ def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
     running_height = 0
     for m in range(1, nlayers+1):
         mu = 15
-        height = htop * ((mu * (m / nlayers)**2 + 1)**0.5 - 1) / ((mu + 1)**0.5 - 1)
+        height = htop * (((mu * (m / nlayers)**2 + 1)**0.5 - 1)
+                         / ((mu + 1)**0.5 - 1))
         depth = height - running_height
         running_height = height
         layer_height.append(depth)
 
     base_mesh = GeneralCubedSphereMesh(
-        a, num_cells_per_edge_of_panel=ncell_per_edge, degree=2)
-    mesh = ExtrudedMesh(base_mesh, layers=nlayers,
-                        layer_height=layer_height, extrusion_type='radial')
-    domain = Domain(mesh, dt, "RTCF", horizontal_degree=horder,
-                    vertical_degree=vorder)
+        a, num_cells_per_edge_of_panel=ncell_per_edge, degree=2
+    )
+    mesh = ExtrudedMesh(
+        base_mesh, layers=nlayers, layer_height=layer_height,
+        extrusion_type='radial'
+    )
+    domain = Domain(
+        mesh, dt, "RTCF", horizontal_degree=horder, vertical_degree=vorder
+    )
 
     # Equations
     params = CompressibleParameters()
     omega_vec = as_vector([0, 0, Constant(omega)])
-    eqn = CompressibleEulerEquations(domain, params, Omega=omega_vec,
-                                     u_transport_option=u_eqn_type)
+    eqn = CompressibleEulerEquations(
+        domain, params, Omega=omega_vec, u_transport_option=u_eqn_type
+    )
 
     # Outputting and IO
-    output = OutputParameters(dirname=dirname,
-                              dumpfreq=dumpfreq,
-                              dump_nc=True,
-                              dump_vtus=False)
+    output = OutputParameters(
+        dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
+    )
     diagnostic_fields = []
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -99,10 +118,10 @@ def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
 
     # Time Stepper
     # NB: unsure if this runs stably with num_outer=2, num_inner=2
-    stepper = SemiImplicitQuasiNewton(eqn, io, transported_fields,
-                                      transport_methods,
-                                      linear_solver=linear_solver,
-                                      num_outer=4, num_inner=1)
+    stepper = SemiImplicitQuasiNewton(
+        eqn, io, transported_fields, transport_methods,
+        linear_solver=linear_solver, num_outer=4, num_inner=1
+    )
 
     # ------------------------------------------------------------------------ #
     # Initial Conditions
@@ -139,50 +158,63 @@ def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
     B = (T0e - T0p) / ((T0e + T0p)*T0p)
     C = ((k + 2) / 2)*((T0e - T0p) / (T0e * T0p))
 
-    tao1 = A * lapse / T0 * exp((r - a)*lapse / T0) + B * (1 - 2*((r-a)/(b*H))**2)*exp(-((r-a) / (b*H))**2)
-    tao2 = C * (1 - 2*((r-a)/(b*H))**2)*exp(-((r - a) / (b*H))**2)
+    tau1 = (A * lapse / T0 * exp((r - a)*lapse / T0)
+            + B * (1 - 2*((r-a)/(b*H))**2)*exp(-((r-a) / (b*H))**2))
 
-    tao1_int = A * (exp(lapse * (r - a) / T0) - 1) + B * (r - a) * exp(-((r-a)/(b*H))**2)
-    tao2_int = C * (r - a) * exp(-((r-a) / (b*H))**2)
+    tau2 = C * (1 - 2*((r-a)/(b*H))**2)*exp(-((r - a) / (b*H))**2)
+
+    tau1_integral = (A * (exp(lapse * (r - a) / T0) - 1)
+                     + B * (r - a) * exp(-((r-a)/(b*H))**2))
+    tau2_integral = C * (r - a) * exp(-((r-a) / (b*H))**2)
 
     # Temperature and pressure fields
-    T_expr = (a / r)**2 * (tao1 - tao2 * (s**k - (k / (k + 2)) * s**(k + 2)))**(-1)
-    P_expr = p0 * exp(-g / Rd * tao1_int + g / Rd * tao2_int * (s**k - (k / (k+2)) * s**(k+2)))
+    T_expr = (a / r)**2 * (tau1 - tau2 * (s**k
+                                          - (k / (k + 2)) * s**(k + 2)))**(-1)
+    P_expr = p0 * exp(-g / Rd * tau1_integral
+                      + g / Rd * tau2_integral * (s**k - (k / (k+2)) * s**(k+2)))
 
     # wind expression
-    wind_proxy = (g / a) * k * T_expr * tao2_int * (((r * cos(lat)) / a)**(k-1) - ((r * cos(lat)) / a)**(k+1))
-    wind = -omega * r * cos(lat) + sqrt((omega * r * cos(lat))**2 + r * cos(lat) * wind_proxy)
+    wind_proxy = ((g / a) * k * T_expr * tau2_integral
+                  * (((r * cos(lat)) / a)**(k-1) - ((r * cos(lat)) / a)**(k+1)))
+    wind = (-omega * r * cos(lat)
+            + sqrt((omega * r * cos(lat))**2 + r * cos(lat) * wind_proxy))
 
     theta_expr = T_expr * (P_expr / p0) ** (-params.kappa)
     exner_expr = T_expr / theta_expr
     rho_expr = P_expr / (Rd * T_expr)
 
-    # -------------------------------------------------------------- #
-    # Perturbation
-    # -------------------------------------------------------------- #
+    # Perturbation -------------------------------------------------------------
 
     base_zonal_u = wind
     base_merid_u = Constant(0.0)
 
-    d = a * acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon - lon_c))  # distance from centre of perturbation
+    # Distance from centre of perturbation
+    d = a * acos(sin(lat_c)*sin(lat) + cos(lat_c)*cos(lat)*cos(lon - lon_c))
 
     height = r - a  # The distance from origin subtracted from earth radius
     err_tol = 1e-12
-    zeta = conditional(ge(height, z_pert-err_tol), 0, 1 - 3*(height / z_pert)**2 + 2*(height / z_pert)**3)  # peturbation vertical taper
+    # Tapering of vertical perturbation
+    zeta = conditional(ge(height, z_pert-err_tol), 0,
+                       1 - 3*(height / z_pert)**2 + 2*(height / z_pert)**3)
 
-    perturb_magnitude = (16*Vp/(3*sqrt(3))) * zeta * sin((pi * d) / (2 * d0)) * cos((pi * d) / (2 * d0))**3
+    perturb_magnitude = ((16*Vp/(3*sqrt(3))) * zeta * sin((pi * d) / (2 * d0))
+                         * cos((pi * d) / (2 * d0))**3)
 
-    zonal_pert = conditional(le(d, err_tol), 0,
-        conditional(ge(d, (d0-err_tol)), 0,
-                    -perturb_magnitude * (-sin(lat_c)*cos(lat) + cos(lat_c)*sin(lat)*cos(lon - lon_c)) / sin(d / a)))
-    meridional_pert = conditional(le(d, err_tol), 0,
-        conditional(ge(d, d0-err_tol), 0, perturb_magnitude * cos(lat_c)*sin(lon - lon_c) / sin(d / a)))
+    zonal_pert = conditional(
+        le(d, err_tol), 0,
+        conditional(ge(d, (d0-err_tol)), 0, -perturb_magnitude
+                    * (-sin(lat_c)*cos(lat)
+                    + cos(lat_c)*sin(lat)*cos(lon - lon_c)) / sin(d / a)))
+    meridional_pert = conditional(
+        le(d, err_tol), 0,
+        conditional(ge(d, d0-err_tol), 0, perturb_magnitude
+                    * cos(lat_c)*sin(lon - lon_c) / sin(d / a)))
 
     zonal_u = base_zonal_u + zonal_pert
     merid_u = base_merid_u + meridional_pert
     radial_u = Constant(0.0)
 
-    # Get spherical basis vectors, expressed in terms of thier (x,y,z) components:
+    # Get spherical basis vectors, expressed in terms of (x,y,z) components
     e_lon = xyz_vector_from_lonlatr(1, 0, 0, (x, y, z))
     e_lat = xyz_vector_from_lonlatr(0, 1, 0, (x, y, z))
     e_r = xyz_vector_from_lonlatr(0, 0, 1, (x, y, z))
@@ -199,24 +231,25 @@ def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
     u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
     u_proj_solver.solve()
 
-
     theta0.interpolate(theta_expr)
     exner = Function(Vr).interpolate(exner_expr)
     rho0.interpolate(rho_expr)
 
     logger.info('find rho by solving hydrostatic balance')
-    compressible_hydrostatic_balance(eqn, theta0, rho0, exner_boundary=exner, solve_for_rho=True)
+    compressible_hydrostatic_balance(
+        eqn, theta0, rho0, exner_boundary=exner, solve_for_rho=True
+    )
 
     rho_analytic = Function(Vr).interpolate(rho_expr)
-    logger.info(f'Normalised rho error is: {errornorm(rho_analytic, rho0) / norm(rho_analytic)}')
+    logger.info('Normalised rho error is: '
+                + f'{errornorm(rho_analytic, rho0) / norm(rho_analytic)}')
 
     # make mean fields
     rho_b = Function(Vr).assign(rho0)
     theta_b = Function(Vt).assign(theta0)
 
     # assign reference profiles
-    stepper.set_reference_profiles([('rho', rho_b),
-                                    ('theta', theta_b)])
+    stepper.set_reference_profiles([('rho', rho_b), ('theta', theta_b)])
 
     stepper.run(t=0, tmax=tmax)
 
@@ -224,7 +257,9 @@ def dry_baroclinic_sphere(ncell_per_edge=16, nlayers=15, dt=900.0,
 # MAIN
 # ---------------------------------------------------------------------------- #
 
+
 if __name__ == "__main__":
+
     parser = ArgumentParser(
         description=__doc__,
         formatter_class=ArgumentDefaultsHelpFormatter
@@ -233,37 +268,37 @@ if __name__ == "__main__":
         '--ncell_per_edge',
         help="The number of cells per panel edge of the cubed-sphere.",
         type=int,
-        default=16
+        default=dry_baroclinic_sphere_defaults['ncell_per_edge']
     )
     parser.add_argument(
         '--nlayers',
         help="The number of layers for the mesh.",
         type=int,
-        default=15
+        default=dry_baroclinic_sphere_defaults['nlayers']
     )
     parser.add_argument(
         '--dt',
         help="The time step in seconds.",
         type=float,
-        default=900.0
+        default=dry_baroclinic_sphere_defaults['dt']
     )
     parser.add_argument(
         "--tmax",
         help="The end time for the simulation in seconds.",
         type=float,
-        default=15.*24.*60.*60.
+        default=dry_baroclinic_sphere_defaults['tmax']
     )
     parser.add_argument(
         '--dumpfreq',
         help="The frequency at which to dump field output.",
         type=int,
-        default=48  # Corresponds to 12 hours with default values
+        default=dry_baroclinic_sphere_defaults['dumpfreq']
     )
     parser.add_argument(
         '--dirname',
         help="The name of the directory to write to.",
         type=str,
-        default='dry_baroclinic_sphere'
+        default=dry_baroclinic_sphere_defaults['dirname']
     )
     args, unknown = parser.parse_known_args()
 
