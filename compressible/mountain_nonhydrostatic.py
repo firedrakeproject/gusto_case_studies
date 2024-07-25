@@ -63,9 +63,8 @@ dirname = 'nonhydrostatic_mountain'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=dumpfreq,
                           dumplist=['u'],
-                          log_level='INFO',
                           checkpoint_method='dumbcheckpoint')
-diagnostic_fields = [CourantNumber(), VelocityZ(), Perturbation('theta'), Perturbation('rho')]
+diagnostic_fields = [CourantNumber(), ZComponent('u'), Perturbation('theta'), Perturbation('rho')]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes

@@ -6,7 +6,7 @@ This uses an icosahedral mesh of the sphere, and runs a series of resolutions.
 """
 
 from gusto import *
-from firedrake import (SpatialCoordinate, as_vector, CheckpointFile, sqrt)
+from firedrake import (SpatialCoordinate, as_vector, CheckpointFile)
 import sys
 from os.path import join, abspath, dirname
 
@@ -58,16 +58,18 @@ eqns = ShallowWaterEquations(domain, parameters, fexpr=fexpr, bexpr=bexpr,
 dirname = "shallow_water_pangea"
 dumpfreq = int(tmax / (ndumps*dt))
 output = OutputParameters(dirname=dirname, dumplist=['D','topography'],
-                          dump_nc=True, dumpfreq=dumpfreq, log_level='INFO')
+                          dump_nc=True, dumpfreq=dumpfreq)
 diagnostic_fields = [Sum('D', 'topography'), RelativeVorticity(),
                      MeridionalComponent('u'), ZonalComponent('u')]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes
 transported_fields = [SSPRK3(domain, "u"), SSPRK3(domain, "D")]
+transport_methods = [DGUpwind(eqns, "u"), DGUpwind(eqns, "D")]
 
 # Time stepper
-stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields)
+stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
+                                  spatial_methods=transport_methods)
 
 # ------------------------------------------------------------------------ #
 # Initial conditions

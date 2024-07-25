@@ -56,7 +56,7 @@ eqns = CompressibleEulerEquations(domain, params, active_tracers=tracers,
 # I/O
 dirname = 'moist_baroclinic_channel'
 output = OutputParameters(dirname=dirname, dumpfreq=dumpfreq, dump_nc=True,
-                          dumplist=['cloud_water'], log_level='INFO')
+                          dumplist=['cloud_water'])
 diagnostic_fields = [Perturbation('theta')]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -67,6 +67,8 @@ transported_fields = [SSPRK3(domain, "u"),
                       SSPRK3(domain, "water_vapour"),
                       SSPRK3(domain, "cloud_water")]
 
+transport_methods = [DGUpwind(eqns, field) for field in ["u", "rho", "theta", "water_vapour", "cloud_water"]]
+
 # Linear solver
 linear_solver = CompressibleSolver(eqns)
 
@@ -75,6 +77,7 @@ physics_schemes = [(SaturationAdjustment(eqns), ForwardEuler(domain))]
 
 # Time stepper
 stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
+                                  spatial_methods=transport_methods,
                                   linear_solver=linear_solver,
                                   physics_schemes=physics_schemes)
 
