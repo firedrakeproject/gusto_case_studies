@@ -52,8 +52,7 @@ eqns = CompressibleEulerEquations(domain, params, active_tracers=tracers)
 dirname = 'moist_bryan_fritsch'
 output = OutputParameters(dirname=dirname,
                           dumpfreq=int(tmax / (5*dt)),
-                          dumplist=['u'],
-                          log_level='INFO')
+                          dumplist=['u'])
 diagnostic_fields = [Theta_e(eqns)]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 

@@ -4,7 +4,7 @@ The Galewsky jet test case.
 
 from gusto import *
 from firedrake import (SpatialCoordinate, pi, conditional, exp, cos, assemble,
-                       dx, Constant, Function, sqrt, atan_2, asin)
+                       dx, Constant, Function, sqrt, atan2, asin, as_vector)
 import numpy as np
 import sys
 
@@ -51,15 +51,17 @@ eqns = ShallowWaterEquations(domain, parameters, fexpr=fexpr,
 dirname = "galewsky"
 dumpfreq = int(tmax / (ndumps*dt))
 output = OutputParameters(dirname=dirname, dumpfreq=dumpfreq, dump_nc=True,
-                          dumplist=['D'], log_level='INFO')
+                          dumplist=['D'])
 diagnostic_fields = [RelativeVorticity()]
 io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
 # Transport schemes
 transported_fields = [SSPRK3(domain, "u"), SSPRK3(domain, "D")]
+transport_methods = [DGUpwind(eqns, "u"), DGUpwind(eqns, "D")]
 
 # Time stepper
-stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields)
+stepper = SemiImplicitQuasiNewton(eqns, io, transported_fields,
+                                  spatial_methods=transport_methods)
 
 # ---------------------------------------------------------------------------- #
 # Initial conditions
@@ -87,7 +89,7 @@ e_z = as_vector([Constant(0.0), Constant(0.0), Constant(1.0)])
 R = sqrt(x[0]**2 + x[1]**2)  # distance from z axis
 r = sqrt(x[0]**2 + x[1]**2 + x[2]**2)  # distance from origin
 
-lon = atan_2(x[1], x[0])
+lon = atan2(x[1], x[0])
 lat = asin(x[2]/r)
 e_lon = (x[0] * e_y - x[1] * e_x) / R
 lat_VD = Function(D0_field.function_space()).interpolate(lat)
