@@ -39,7 +39,8 @@ def dry_baroclinic_sphere(
         dt=dry_baroclinic_sphere_defaults['dt'],
         tmax=dry_baroclinic_sphere_defaults['tmax'],
         dumpfreq=dry_baroclinic_sphere_defaults['dumpfreq'],
-        dirname=dry_baroclinic_sphere_defaults['dirname']):
+        dirname=dry_baroclinic_sphere_defaults['dirname']
+):
 
     # ------------------------------------------------------------------------ #
     # Parameters for test case
@@ -52,7 +53,7 @@ def dry_baroclinic_sphere(
     T0p = 240         # polar surface temperature, in K
     Vp = 1.0          # maximum velocity of perturbation in m/s
     z_pert = 1.5e4    # height of perturbation
-    d0 = a / 6        # horizontal radius of perturbation
+    d0 = a/6          # horizontal radius of perturbation
     lon_c = pi/9      # longitude of perturbation centre
     lat_c = 2*pi/9    # latitude of perturbation centre
 
@@ -73,8 +74,10 @@ def dry_baroclinic_sphere(
     running_height = 0
     for m in range(1, nlayers+1):
         mu = 15
-        height = htop * (((mu * (m / nlayers)**2 + 1)**0.5 - 1)
-                         / ((mu + 1)**0.5 - 1))
+        height = htop * (
+            ((mu * (m / nlayers)**2 + 1)**0.5 - 1)
+            / ((mu + 1)**0.5 - 1)
+        )
         depth = height - running_height
         running_height = height
         layer_height.append(depth)
@@ -106,12 +109,16 @@ def dry_baroclinic_sphere(
 
     # Transport options -- use embedded DG for theta transport
     theta_opts = EmbeddedDGOptions()
-    transported_fields = [SSPRK3(domain, "u"),
-                          SSPRK3(domain, "rho"),
-                          SSPRK3(domain, "theta", options=theta_opts)]
-    transport_methods = [DGUpwind(eqn, "u"),
-                         DGUpwind(eqn, "rho"),
-                         DGUpwind(eqn, "theta")]
+    transported_fields = [
+        SSPRK3(domain, "u"),
+        SSPRK3(domain, "rho"),
+        SSPRK3(domain, "theta", options=theta_opts)
+    ]
+    transport_methods = [
+        DGUpwind(eqn, "u"),
+        DGUpwind(eqn, "rho"),
+        DGUpwind(eqn, "theta")
+    ]
 
     # Linear Solver
     linear_solver = CompressibleSolver(eqn)
@@ -147,41 +154,50 @@ def dry_baroclinic_sphere(
     p0 = params.p_0
 
     # Some temporary variables
-    T0 = 0.5 * (T0e + T0p)
-    H = Rd * T0 / g  # scale height of atmosphere
+    T0 = 0.5*(T0e + T0p)
+    H = Rd*T0/g      # scale height of atmosphere
     k = 3            # power of temperature field
     b = 2            # half width parameter
 
     # Expressions for temporary variables from paper
-    s = (r / a) * cos(lat)
-    A = 1 / lapse
-    B = (T0e - T0p) / ((T0e + T0p)*T0p)
-    C = ((k + 2) / 2)*((T0e - T0p) / (T0e * T0p))
+    s = (r/a)*cos(lat)
+    A = 1/lapse
+    B = (T0e - T0p)/((T0e + T0p)*T0p)
+    C = ((k + 2)/2)*((T0e - T0p)/(T0e*T0p))
 
-    tau1 = (A * lapse / T0 * exp((r - a)*lapse / T0)
-            + B * (1 - 2*((r-a)/(b*H))**2)*exp(-((r-a) / (b*H))**2))
+    tau1 = A*lapse*exp((r - a)*lapse/T0)/T0
+    tau1 += B * (1 - 2*((r - a)/(b*H))**2) * exp(-((r - a) / (b*H))**2)
 
-    tau2 = C * (1 - 2*((r-a)/(b*H))**2)*exp(-((r - a) / (b*H))**2)
+    tau2 = C * (1 - 2*((r - a)/(b*H))**2) * exp(-((r - a) / (b*H))**2)
 
-    tau1_integral = (A * (exp(lapse * (r - a) / T0) - 1)
-                     + B * (r - a) * exp(-((r-a)/(b*H))**2))
-    tau2_integral = C * (r - a) * exp(-((r-a) / (b*H))**2)
+    tau1_integral = A * (exp(lapse * (r - a) / T0) - 1)
+    tau1_integral += B * (r - a) * exp(-((r - a) / (b*H))**2)
+
+    tau2_integral = C * (r - a) * exp(-((r - a) / (b*H))**2)
 
     # Temperature and pressure fields
-    T_expr = (a / r)**2 * (tau1 - tau2 * (s**k
-                                          - (k / (k + 2)) * s**(k + 2)))**(-1)
-    P_expr = p0 * exp(-g / Rd * tau1_integral
-                      + g / Rd * tau2_integral * (s**k - (k / (k+2)) * s**(k+2)))
+    T_expr = (a / r)**2 / (
+        tau1 - tau2 * (s**k - (k/(k + 2)) * s**(k + 2))
+    )
+    P_expr = p0 * exp(
+        - g/Rd * tau1_integral
+        + g/Rd * tau2_integral * (s**k - (k / (k + 2)) * s**(k + 2))
+    )
 
     # wind expression
-    wind_proxy = ((g / a) * k * T_expr * tau2_integral
-                  * (((r * cos(lat)) / a)**(k-1) - ((r * cos(lat)) / a)**(k+1)))
-    wind = (-omega * r * cos(lat)
-            + sqrt((omega * r * cos(lat))**2 + r * cos(lat) * wind_proxy))
+    wind_proxy = (
+        (g/a)*k*T_expr*tau2_integral*(
+            ((r*cos(lat))/a)**(k - 1) - ((r*cos(lat))/a)**(k + 1)
+        )
+    )
+    wind = (
+        - omega*r*cos(lat)
+        + sqrt((omega*r*cos(lat))**2 + r*cos(lat)*wind_proxy)
+    )
 
-    theta_expr = T_expr * (P_expr / p0) ** (-params.kappa)
-    exner_expr = T_expr / theta_expr
-    rho_expr = P_expr / (Rd * T_expr)
+    theta_expr = T_expr*(P_expr/p0)**(- params.kappa)
+    exner_expr = T_expr/theta_expr
+    rho_expr = P_expr/(Rd*T_expr)
 
     # Perturbation -------------------------------------------------------------
 
@@ -194,21 +210,36 @@ def dry_baroclinic_sphere(
     height = r - a  # The distance from origin subtracted from earth radius
     err_tol = 1e-12
     # Tapering of vertical perturbation
-    zeta = conditional(ge(height, z_pert-err_tol), 0,
-                       1 - 3*(height / z_pert)**2 + 2*(height / z_pert)**3)
+    zeta = conditional(
+        ge(height, z_pert-err_tol),
+        0,
+        1 - 3*(height/z_pert)**2 + 2*(height/z_pert)**3
+    )
 
-    perturb_magnitude = ((16*Vp/(3*sqrt(3))) * zeta * sin((pi * d) / (2 * d0))
-                         * cos((pi * d) / (2 * d0))**3)
+    perturb_magnitude = (
+        (16*Vp/(3*sqrt(3)))*zeta*sin((pi*d)/(2*d0))*cos((pi*d)/(2 * d0))**3
+    )
 
     zonal_pert = conditional(
-        le(d, err_tol), 0,
-        conditional(ge(d, (d0-err_tol)), 0, -perturb_magnitude
-                    * (-sin(lat_c)*cos(lat)
-                    + cos(lat_c)*sin(lat)*cos(lon - lon_c)) / sin(d / a)))
+        le(d, err_tol),
+        0,
+        conditional(
+            ge(d, (d0 - err_tol)),
+            0,
+            - perturb_magnitude*(
+                -sin(lat_c)*cos(lat) + cos(lat_c)*sin(lat)*cos(lon - lon_c)
+            )/sin(d/a)
+        )
+    )
     meridional_pert = conditional(
-        le(d, err_tol), 0,
-        conditional(ge(d, d0-err_tol), 0, perturb_magnitude
-                    * cos(lat_c)*sin(lon - lon_c) / sin(d / a)))
+        le(d, err_tol),
+        0,
+        conditional(
+            ge(d, d0 - err_tol),
+            0,
+            perturb_magnitude*cos(lat_c)*sin(lon - lon_c)/sin(d/a)
+        )
+    )
 
     zonal_u = base_zonal_u + zonal_pert
     merid_u = base_merid_u + meridional_pert
@@ -225,8 +256,8 @@ def dry_baroclinic_sphere(
     logger.debug('project u')
     test_u = TestFunction(Vu)
     dx_reduced = dx(degree=4)
-    u_field = zonal_u*e_lon + merid_u * e_lat + radial_u * e_r
-    u_proj_eqn = inner(test_u, u0 - u_field) * dx_reduced
+    u_field = zonal_u*e_lon + merid_u*e_lat + radial_u*e_r
+    u_proj_eqn = inner(test_u, u0 - u_field)*dx_reduced
     u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
     u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
     u_proj_solver.solve()
@@ -242,7 +273,7 @@ def dry_baroclinic_sphere(
 
     rho_analytic = Function(Vr).interpolate(rho_expr)
     logger.info('Normalised rho error is: '
-                + f'{errornorm(rho_analytic, rho0) / norm(rho_analytic)}')
+                + f'{errornorm(rho_analytic, rho0)/norm(rho_analytic)}')
 
     # make mean fields
     rho_b = Function(Vr).assign(rho0)
