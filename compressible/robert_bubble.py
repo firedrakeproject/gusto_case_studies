@@ -1,13 +1,18 @@
 """
-The dry rising bubble test case of Robert (1993).
+The dry rising bubble test case of Robert, 1993:
+``Bubble convection experiments with a semi-implicit formulation of the Euler
+equations'', JAS.
 
-Potential temperature is transported using the embedded DG technique.
+The test simulates a rising thermal at high resolution.
+
+This setup uses a vertical slice with the order 1 finite elements. The potential
+temperature is transported using the embedded DG technique.
 """
 
-from gusto import *
-from firedrake import (PeriodicIntervalMesh, ExtrudedMesh, SpatialCoordinate,
-                       Constant, pi, cos, Function, sqrt, conditional)
-import sys
+from firedrake import (
+    PeriodicIntervalMesh, ExtrudedMesh, SpatialCoordinate, Constant, pi, cos,
+    Function, sqrt, conditional
+)
 
 # ---------------------------------------------------------------------------- #
 # Test case parameters

@@ -2,7 +2,7 @@
 The moist rising bubble test from Bryan & Fritsch, 2002:
 ``A Benchmark Simulation for Moist Nonhydrostatic Numerical Models'', GMD.
 
-The test simulates a rising thermal in a cloud atmosphere, which is fueled by
+The test simulates a rising thermal in a cloudy atmosphere, which is fueled by
 latent heating from condensation.
 
 This setup uses a vertical slice with the order 1 finite elements.
@@ -43,9 +43,9 @@ def moist_bryan_fritsch(
         dirname=moist_bryan_fritsch_defaults['dirname']
 ):
 
-    # ---------------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     # Test case parameters
-    # ---------------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     domain_width = 10000.    # domain width, in m
     domain_height = 10000.    # domain height, in m
     zc = 2000.                # vertical centre of bubble, in m
@@ -58,9 +58,9 @@ def moist_bryan_fritsch(
     element_order = 1
     u_eqn_type = 'vector_invariant_form'
 
-    # ---------------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     # Set up model objects
-    # ---------------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
 
     # Domain
     base_mesh = PeriodicIntervalMesh(ncolumns, domain_width)
@@ -76,7 +76,6 @@ def moist_bryan_fritsch(
         domain, params, active_tracers=tracers, u_transport_option=u_eqn_type)
 
     # I/O
-    dirname = 'moist_bryan_fritsch'
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dumplist=['u']
     )
@@ -93,7 +92,8 @@ def moist_bryan_fritsch(
     ]
 
     transport_methods = [
-        DGUpwind(eqns, field) for field in ["u", "rho", "theta", "water_vapour", "cloud_water"]
+        DGUpwind(eqns, field) for field in
+            ["u", "rho", "theta", "water_vapour", "cloud_water"]
     ]
 
     # Linear solver

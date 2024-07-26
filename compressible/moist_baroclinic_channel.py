@@ -1,11 +1,21 @@
-from gusto import *
-from firedrake import (PeriodicRectangleMesh, ExtrudedMesh,
-                       SpatialCoordinate, conditional, cos, sin, pi, sqrt,
-                       ln, exp, Constant, Function, DirichletBC, as_vector,
-                       FunctionSpace, BrokenElement, VectorFunctionSpace,
-                       errornorm, norm, cross, grad)
-from firedrake.slope_limiter.vertex_based_limiter import VertexBasedLimiter
-import sys
+"""
+The moist baroclinic wave in a channel from the appendix of Ullrich, Reed &
+Jablonowski, 2015:
+``Analytical initial conditions and an analysis of baroclinic instability waves
+in f - and β-plane 3D channel models'', QJRMS.
+
+This test emulates a moist baroclinic wave in a channel, with two moisture
+variables with associated latent heating as they change phase.
+
+The setup here is for the order 1 finite elements, in a 3D slice which is
+periodic in the x direction but with rigid walls in the y direction.
+"""
+
+from firedrake import (
+    PeriodicRectangleMesh, ExtrudedMesh, SpatialCoordinate, conditional, cos,
+    sin, pi, sqrt, ln, exp, Constant, Function, DirichletBC, as_vector, grad,
+    FunctionSpace, BrokenElement, VectorFunctionSpace, errornorm, norm, cross
+)
 
 # ---------------------------------------------------------------------------- #
 # Test case parameters
