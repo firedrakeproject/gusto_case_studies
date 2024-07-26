@@ -44,9 +44,9 @@ def moist_bryan_fritsch(
 ):
 
     # ------------------------------------------------------------------------ #
-    # Test case parameters
+    # Parameters for test case
     # ------------------------------------------------------------------------ #
-    domain_width = 10000.    # domain width, in m
+    domain_width = 10000.     # domain width, in m
     domain_height = 10000.    # domain height, in m
     zc = 2000.                # vertical centre of bubble, in m
     rc = 2000.                # radius of bubble, in m
@@ -93,7 +93,7 @@ def moist_bryan_fritsch(
 
     transport_methods = [
         DGUpwind(eqns, field) for field in
-            ["u", "rho", "theta", "water_vapour", "cloud_water"]
+        ["u", "rho", "theta", "water_vapour", "cloud_water"]
     ]
 
     # Linear solver
