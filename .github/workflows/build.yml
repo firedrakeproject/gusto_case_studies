@@ -1,0 +1,60 @@
+name: Run case studies
+
+on:
+  # Push to main or PR
+  push:
+    branches:
+      - main
+  pull_request:
+  schedule:
+    # * is a special character in YAML so you have to quote this string
+    # Scheduled build at 0330 UTC on Monday mornings to detect bitrot.
+    - cron:  '0 3 * * 2'
+
+jobs:
+  build:
+    name: "Build Gusto"
+    # The type of runner that the job will run on
+    runs-on: self-hosted
+    # The docker container to use.
+    container:
+      image: firedrakeproject/firedrake-vanilla:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cleanup
+        if: ${{ always() }}
+        run: |
+          cd ..
+          rm -rf build
+      - name: Install Gusto
+        run: |
+          . /home/firedrake/firedrake/bin/activate
+          firedrake-update --install gusto
+          python -m pip install  \
+            pytest-timeout pytest-xdist
+      - name: Gusto tests
+        run: |
+          . /home/firedrake/firedrake/bin/activate
+          firedrake-clean
+          python -m pytest \
+            -n 4 --dist=worksteal \
+            --durations=100 \
+            --timeout=3600 \
+            --timeout-method=thread \
+            -o faulthandler_timeout=3660 \
+            -v
+        timeout-minutes: 300
+      - name: Prepare logs
+        if: always()
+        run: |
+          mkdir logs
+          cd ./results
+          find . -name "*.log" -exec cp --parents {} /__w/gusto_case_studies/gusto_case_studies/logs/ \;
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-pages-artifact@v1
+        with:
+          name: log-files
+          path: /__w/gusto_case_studies/gusto_case_studies/logs
+          retention-days: 5
+
