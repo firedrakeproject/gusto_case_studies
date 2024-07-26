@@ -71,7 +71,7 @@ def robert_bubble(
     # Equation
     parameters = CompressibleParameters()
     eqns = CompressibleEulerEquations(
-        domain, parameters, u_transport_form=u_eqn_type
+        domain, parameters, u_transport_option=u_eqn_type
     )
 
     # I/O
@@ -134,7 +134,9 @@ def robert_bubble(
 
     theta0.interpolate(theta_b + theta_pert)
     rho0.interpolate(rho_b)
-    u0.project(as_vector([0.0, 0.0]))
+    u0.project(as_vector(
+        [Constant(0.0, domain=mesh), Constant(0.0, domain=mesh)]
+    ))
 
     stepper.set_reference_profiles([('rho', rho_b), ('theta', theta_b)])
 

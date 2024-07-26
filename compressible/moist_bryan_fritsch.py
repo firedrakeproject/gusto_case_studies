@@ -13,7 +13,7 @@ from firedrake import (
     PeriodicIntervalMesh, ExtrudedMesh, SpatialCoordinate, conditional, cos, pi,
     sqrt, NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction,
     dx, TrialFunction, Function, as_vector, LinearVariationalProblem,
-    LinearVariationalSolver
+    LinearVariationalSolver, Constant
 )
 
 from gusto import (
@@ -184,7 +184,9 @@ def moist_bryan_fritsch(
     water_c0.assign(water_t - water_v0)
 
     # wind initially zero
-    u0.project(as_vector([0.0, 0.0]))
+    u0.project(as_vector(
+        [Constant(0.0, domain=mesh), Constant(0.0, domain=mesh)]
+    ))
 
     stepper.set_reference_profiles(
         [

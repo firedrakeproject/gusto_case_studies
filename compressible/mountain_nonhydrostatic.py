@@ -94,7 +94,7 @@ def mountain_nonhydrostatic(
         H=domain_height, z_level=domain_height-sponge_depth, mubar=sponge_mu/dt
     )
     eqns = CompressibleEulerEquations(
-        domain, parameters, sponge=sponge, u_transport_form=u_eqn_type
+        domain, parameters, sponge_options=sponge, u_transport_option=u_eqn_type
     )
 
     # I/O

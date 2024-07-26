@@ -91,7 +91,7 @@ def moist_baroclinic_channel(
     coriolis = 2*omega*sin(phi0)*domain.k
     eqns = CompressibleEulerEquations(
         domain, params, active_tracers=tracers, Omega=coriolis/2,
-        no_normal_flow_bc_ids=[1, 2], u_transport_form=u_eqn_type
+        no_normal_flow_bc_ids=[1, 2], u_transport_option=u_eqn_type
     )
 
     # I/O
