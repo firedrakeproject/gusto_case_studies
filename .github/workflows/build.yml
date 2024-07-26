@@ -37,6 +37,7 @@ jobs:
           . /home/firedrake/firedrake/bin/activate
           firedrake-clean
           python -m pytest \
+            -n 4 --dist=worksteal \
             --durations=100 \
             --timeout=3600 \
             --timeout-method=thread \
@@ -47,7 +48,7 @@ jobs:
         if: always()
         run: |
           mkdir logs
-          cd /tmp/pytest-of-firedrake/pytest-0/
+          cd ./results
           find . -name "*.log" -exec cp --parents {} /__w/gusto_case_studies/gusto_case_studies/logs/ \;
       - name: Upload artifact
         if: always()
