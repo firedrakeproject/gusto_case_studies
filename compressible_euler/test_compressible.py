@@ -11,7 +11,8 @@ def test_dry_baroclinic_sphere():
         nlayers=3,
         dt=900,
         tmax=1800,
-        dumpfreq=2
+        dumpfreq=2,
+        dirname='pytest_dry_baroclinic_sphere'
     )
 
 
@@ -22,7 +23,8 @@ def test_moist_baroclinic_channel():
         nlayers=5,
         dt=300.0,
         tmax=600.0,
-        dumpfreq=2
+        dumpfreq=2,
+        dirname='pytest_moist_baroclinic_channel'
     )
 
 
@@ -32,7 +34,8 @@ def test_moist_bryan_fritsch():
         nlayers=5,
         dt=2.0,
         tmax=10.0,
-        dumpfreq=5
+        dumpfreq=5,
+        dirname='pytest_moist_bryan_fritsch'
     )
 
 
@@ -42,7 +45,8 @@ def test_mountain_nonhydrostatic():
         nlayers=10,
         dt=5.0,
         tmax=10.0,
-        dumpfreq=2
+        dumpfreq=2,
+        dirname='pytest_mountain_nonhydrostatic'
     )
 
 
@@ -52,5 +56,6 @@ def test_robert_bubble():
         nlayers=5,
         dt=1.0,
         tmax=2.0,
-        dumpfreq=2
+        dumpfreq=2,
+        dirname='pytest_robert_bubble'
     )
