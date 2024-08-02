@@ -70,6 +70,9 @@ def moist_baroclinic_channel(
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
+    # NB: this test seems to be unstable with 2x2 iterations
+    num_outer = 4
+    num_inner = 1
     element_order = 1
     u_eqn_type = 'vector_invariant_form'
     max_iterations = 40          # max num of iterations for finding eta coords
@@ -126,7 +129,8 @@ def moist_baroclinic_channel(
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, spatial_methods=transport_methods,
-        linear_solver=linear_solver, physics_schemes=physics_schemes
+        linear_solver=linear_solver, physics_schemes=physics_schemes,
+        num_outer=num_outer, num_inner=num_inner
     )
 
     # ------------------------------------------------------------------------ #
