@@ -87,8 +87,8 @@ stepper = PrescribedTransport(eqn, transport_scheme, io, transport_method,
 # Specify locations of the two bumps
 theta_c1 = 0.0
 theta_c2 = 0.0
-lamda_c1 = -pi/6
-lamda_c2 = pi/6
+lamda_c1 = -pi/4
+lamda_c2 = pi/4
 
 if scalar_case == 'cosine_bells':
 
