@@ -6,8 +6,8 @@ import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 import numpy as np
 from matplotlib.colors import ListedColormap
-from tomplot import (set_tomplot_style, tomplot_contours, tomplot_cmap,
-                     plot_contoured_field, add_colorbar_fig,
+from tomplot import (set_tomplot_style, tomplot_contours,
+                     plot_contoured_field,
                      tomplot_field_title, extract_gusto_coords,
                      extract_gusto_field, plot_field_quivers)
 
@@ -15,8 +15,8 @@ from tomplot import (set_tomplot_style, tomplot_contours, tomplot_cmap,
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 # When copying this example these should not be relative to this file
-results_dir = f'/home/thomas/firedrake/src/gusto/case_studies/results/volcanic_ash/'
-plot_dir = f'/home/thomas/firedrake/src/gusto/case_studies/figures'
+results_dir = '/home/thomas/firedrake/src/gusto/case_studies/results/volcanic_ash/'
+plot_dir = '/home/thomas/firedrake/src/gusto/case_studies/figures'
 results_file_name = f'{results_dir}/field_output.nc'
 plot_stem = f'{plot_dir}/volcanic_ash'
 # ---------------------------------------------------------------------------- #
@@ -55,9 +55,9 @@ cmap = plt.cm.get_cmap(colour_scheme, ncolours)
 colours = cmap(np.linspace(0, 1, ncolours))
 # Set transparency for most colours
 for i in range(ncolours):
-    colours[i,-1] = 0.75
+    colours[i, -1] = 0.75
 # Set first colour to transparent
-colours[0,-1] = 0.0
+colours[0, -1] = 0.0
 cmap = ListedColormap(colours)
 # ---------------------------------------------------------------------------- #
 # Loop through points in time
@@ -125,5 +125,3 @@ for time_idx in time_idxs:
     print(f'Saving figure to {plot_name}')
     fig.savefig(plot_name, bbox_inches='tight')
     plt.close()
-
-
