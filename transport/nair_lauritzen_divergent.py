@@ -20,14 +20,15 @@ from firedrake import (
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, IO, lonlatr_from_xyz, SSPRK3,
     DGUpwind, PrescribedTransport, GeneralIcosahedralSphereMesh,
-    great_arc_angle, xyz_vector_from_lonlatr
+    great_arc_angle, xyz_vector_from_lonlatr,
+    ZonalComponent, MeridionalComponent
 )
 
 nair_lauritzen_divergent_defaults = {
     'initial_conditions': 'slotted_cylinder',  # one of 'slotted_cylinder',
                                                # 'cosine_bells' or 'gaussian'
     'background_flow': True,  # whether background flow is applied
-    'ncells_per_edge': 8,     # num points per icosahedron edge (ref level 3)
+    'ncells_per_edge': 16,    # num points per icosahedron edge (ref level 4)
     'dt': 900.0,              # 15 minutes
     'tmax': 12.*24.*60.*60.,  # 12 days
     'dumpfreq': 288,          # once every 3 days with default values
@@ -79,8 +80,8 @@ def nair_lauritzen_divergent(
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
-
-    io = IO(domain, output)
+    diagnostic_fields = [ZonalComponent('u'), MeridionalComponent('u')]
+    io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Details of transport
     transport_scheme = SSPRK3(domain)

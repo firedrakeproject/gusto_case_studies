@@ -30,7 +30,7 @@ from firedrake import (
 from gusto import (
     Domain, ActiveTracer, TracerVariableType, TransportEquationType,
     CoupledTransportEquation, OutputParameters, IO, TracerDensity, SSPRK3,
-    DGUpwind, PrescribedTransport
+    DGUpwind, PrescribedTransport, XComponent, ZComponent
 )
 
 vertical_slice_nair_lauritzen_defaults = {
@@ -102,7 +102,9 @@ def vertical_slice_nair_lauritzen(
     )
 
     # Use a tracer density diagnostic to track conservation
-    diagnostic_fields = [TracerDensity('m_X', 'rho_d')]
+    diagnostic_fields = [
+        TracerDensity('m_X', 'rho_d'), XComponent('u'), ZComponent('u')
+    ]
 
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 

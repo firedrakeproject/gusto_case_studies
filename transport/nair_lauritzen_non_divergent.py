@@ -21,16 +21,16 @@ from firedrake import (
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, IO, lonlatr_from_xyz, SSPRK3,
     DGUpwind, PrescribedTransport, GeneralIcosahedralSphereMesh,
-    great_arc_angle
+    great_arc_angle, ZonalComponent, MeridionalComponent
 )
 
 nair_lauritzen_non_divergent_defaults = {
     'initial_conditions': 'slotted_cylinder',  # one of 'slotted_cylinder',
                                                # 'cosine_bells' or 'gaussian'
-    'ncells_per_edge': 8,     # num points per icosahedron edge (ref level 3)
-    'dt': 900.0,              # 15 minutes
+    'ncells_per_edge': 16,    # num points per icosahedron edge (ref level 4)
+    'dt': 600.0,              # 10 minutes
     'tmax': 12.*24.*60.*60.,  # 12 days
-    'dumpfreq': 288,          # once every 3 days with default values
+    'dumpfreq': 432,          # once every 3 days with default values
     'dirname': 'nair_lauritzen_non_divergent'
 }
 
@@ -78,8 +78,8 @@ def nair_lauritzen_non_divergent(
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
-
-    io = IO(domain, output)
+    diagnostic_fields = [ZonalComponent('u'), MeridionalComponent('u')]
+    io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Details of transport
     transport_scheme = SSPRK3(domain)
@@ -90,13 +90,13 @@ def nair_lauritzen_non_divergent(
 
     # Set up the non-divergent, time-varying, velocity field
     def u_t(t):
-        k = 10*radius/tau
+        k = 10.*radius/tau
         lamda_prime = lamda - 2*pi*t/tau
 
         # Divergence-free wind, obtained from stream function
-        psi_expr = (
+        psi_expr = radius*(
             k*(sin(lamda_prime)*cos(theta))**2*cos(pi*t/tau)
-            - 2.*pi*sin(theta)/tau
+            - 2.*pi*radius*sin(theta)/tau
         )
 
         return domain.perp(grad(psi_expr))
@@ -164,7 +164,7 @@ def nair_lauritzen_non_divergent(
     u0 = stepper.fields("u")
     D0 = stepper.fields("D")
     D0.interpolate(Dexpr)
-    u0.project(u_t(0))
+    u0.project(u_t(0.))
 
     # ------------------------------------------------------------------------ #
     # Run

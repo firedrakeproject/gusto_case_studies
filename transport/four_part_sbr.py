@@ -24,9 +24,9 @@ from gusto import (
 
 four_part_sbr_defaults = {
     'ncells_per_edge': 8,  # num points per icosahedron edge (ref level 3)
-    'dt': 0.5,
+    'dt': 0.25,
     'tmax': 400.0,
-    'dumpfreq': 100,       # output 8 times, twice per half-rotation
+    'dumpfreq': 200,       # output 8 times, twice per half-rotation
     'dirname': 'four_part_sbr'
 }
 
