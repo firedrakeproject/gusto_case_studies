@@ -87,6 +87,16 @@ def nair_lauritzen_divergent(
     transport_scheme = SSPRK3(domain)
     transport_method = DGUpwind(eqn, "D")
 
+    # Time stepper
+    time_varying_velocity = True
+    stepper = PrescribedTransport(
+        eqn, transport_scheme, io, time_varying_velocity, transport_method
+    )
+
+    # ------------------------------------------------------------------------ #
+    # Initial conditions
+    # ------------------------------------------------------------------------ #
+
     # Transporting wind ------------------------------------------------------ #
     lamda, theta, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
 
@@ -114,15 +124,7 @@ def nair_lauritzen_divergent(
 
             return xyz_vector_from_lonlatr(u_zonal, u_merid, Constant(0.0), xyz)
 
-    # Time stepper
-    stepper = PrescribedTransport(
-        eqn, transport_scheme, io, transport_method,
-        prescribed_transporting_velocity=u_t
-    )
-
-    # ------------------------------------------------------------------------ #
-    # Initial conditions
-    # ------------------------------------------------------------------------ #
+    stepper.setup_prescribed_expr(u_t)
 
     # Specify locations of the two bumps
 

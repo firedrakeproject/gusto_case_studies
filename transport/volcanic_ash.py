@@ -98,6 +98,21 @@ def volcanic_ash(
         SourceSink(eqn, 'ash', time_varying_expression, time_varying=True)
     ]
 
+    # Time stepper
+    time_varying_velocity = True
+    stepper = PrescribedTransport(
+        eqn, transport_scheme, io, time_varying_velocity, transport_method,
+        physics_parametrisations=physics_parametrisations
+    )
+
+    # ------------------------------------------------------------------------ #
+    # Initial conditions
+    # ------------------------------------------------------------------------ #
+
+    ash0 = stepper.fields("ash")
+    # Start with some ash over the volcano
+    ash0.interpolate(Constant(0.0)*-basic_expression)
+
     # Transporting wind ------------------------------------------------------ #
     def transporting_wind(t):
         # Divergence-free wind. A series of sines/cosines with different time factors
@@ -111,20 +126,7 @@ def volcanic_ash(
 
         return domain.perp(grad(psi_expr))
 
-    # Time stepper
-    stepper = PrescribedTransport(
-        eqn, transport_scheme, io, transport_method,
-        physics_parametrisations=physics_parametrisations,
-        prescribed_transporting_velocity=transporting_wind
-    )
-
-    # ------------------------------------------------------------------------ #
-    # Initial conditions
-    # ------------------------------------------------------------------------ #
-
-    ash0 = stepper.fields("ash")
-    # Start with some ash over the volcano
-    ash0.interpolate(Constant(0.0)*-basic_expression)
+    stepper.setup_prescribed_expr(transporting_wind)
 
     # ------------------------------------------------------------------------ #
     # Run
