@@ -30,7 +30,7 @@ from firedrake import (
 from gusto import (
     Domain, ActiveTracer, TracerVariableType, TransportEquationType,
     CoupledTransportEquation, OutputParameters, IO, TracerDensity, SSPRK3,
-    DGUpwind, PrescribedTransport
+    DGUpwind, PrescribedTransport, XComponent, ZComponent
 )
 
 vertical_slice_nair_lauritzen_defaults = {
@@ -102,13 +102,25 @@ def vertical_slice_nair_lauritzen(
     )
 
     # Use a tracer density diagnostic to track conservation
-    diagnostic_fields = [TracerDensity('m_X', 'rho_d')]
+    diagnostic_fields = [
+        TracerDensity('m_X', 'rho_d'), XComponent('u'), ZComponent('u')
+    ]
 
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Details of transport
     transport_scheme = SSPRK3(domain)
     transport_methods = [DGUpwind(eqn, "m_X"), DGUpwind(eqn, "rho_d")]
+
+    # Time stepper
+    time_varying_velocity = True
+    stepper = PrescribedTransport(
+        eqn, transport_scheme, io, time_varying_velocity, transport_methods
+    )
+
+    # ------------------------------------------------------------------------ #
+    # Initial conditions
+    # ------------------------------------------------------------------------ #
 
     # Transporting wind ------------------------------------------------------ #
     # Set up the divergent, time-varying, velocity field
@@ -121,15 +133,7 @@ def vertical_slice_nair_lauritzen(
 
         return as_vector([u, w])
 
-    # Time stepper
-    stepper = PrescribedTransport(
-        eqn, transport_scheme, io, transport_methods,
-        prescribed_transporting_velocity=u_t
-    )
-
-    # ------------------------------------------------------------------------ #
-    # Initial conditions
-    # ------------------------------------------------------------------------ #
+    stepper.setup_prescribed_expr(u_t)
 
     # Specify locations of the two Gaussians
     xc1 = 5.*Lx/8.

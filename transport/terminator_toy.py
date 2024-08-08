@@ -134,6 +134,18 @@ def terminator_toy(
          terminator_stepper)
     ]
 
+    # Timestepper that solves the physics separately to the dynamics
+    # with a defined prescribed transporting velocity
+    time_varying_velocity = True
+    stepper = SplitPrescribedTransport(
+        eqn, transport_scheme, io, time_varying_velocity,
+        spatial_methods=transport_method, physics_schemes=physics_schemes
+    )
+
+    # ------------------------------------------------------------------------ #
+    # Initial conditions
+    # ------------------------------------------------------------------------ #
+
     # Transporting wind ------------------------------------------------------ #
     # Set up a non-divergent, time-varying, velocity field
     def u_t(t):
@@ -147,16 +159,7 @@ def terminator_toy(
 
         return xyz_vector_from_lonlatr(u_zonal, u_merid, Constant(0.0), xyz)
 
-    # Timestepper that solves the physics separately to the dynamics
-    # with a defined prescribed transporting velocity
-    stepper = SplitPrescribedTransport(
-        eqn, transport_scheme, io, spatial_methods=transport_method,
-        physics_schemes=physics_schemes, prescribed_transporting_velocity=u_t
-    )
-
-    # ------------------------------------------------------------------------ #
-    # Initial conditions
-    # ------------------------------------------------------------------------ #
+    stepper.setup_prescribed_expr(u_t)
 
     X, Y, Z = xyz
 

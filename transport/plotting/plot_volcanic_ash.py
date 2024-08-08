@@ -1,24 +1,28 @@
 """
 Plots the volcanic ash dispersion test case.
 """
+from os.path import abspath, dirname
 import cartopy.crs as ccrs
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 import numpy as np
 from matplotlib.colors import ListedColormap
-from tomplot import (set_tomplot_style, tomplot_contours,
-                     plot_contoured_field,
-                     tomplot_field_title, extract_gusto_coords,
-                     extract_gusto_field, plot_field_quivers)
+from tomplot import (
+    set_tomplot_style, tomplot_contours, plot_contoured_field,
+    tomplot_field_title, extract_gusto_coords, extract_gusto_field,
+    plot_field_quivers
+)
+
+test = 'volcanic_ash'
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
-# When copying this example these should not be relative to this file
-results_dir = '/home/thomas/firedrake/src/gusto/case_studies/results/volcanic_ash/'
-plot_dir = '/home/thomas/firedrake/src/gusto/case_studies/figures'
-results_file_name = f'{results_dir}/field_output.nc'
-plot_stem = f'{plot_dir}/volcanic_ash'
+# When copying this example these paths need editing, which will usually involve
+# removing the abspath part to set directory paths relative to this file
+results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_output.nc'
+plot_stem = f'{abspath(dirname(__file__))}/../figures/{test}'
+
 # ---------------------------------------------------------------------------- #
 # Things that should be altered based on the plot
 # ---------------------------------------------------------------------------- #
@@ -59,6 +63,12 @@ for i in range(ncolours):
 # Set first colour to transparent
 colours[0, -1] = 0.0
 cmap = ListedColormap(colours)
+
+# ---------------------------------------------------------------------------- #
+# PLOTTING
+# ---------------------------------------------------------------------------- #
+fig = plt.figure(figsize=(20, 12))
+
 # ---------------------------------------------------------------------------- #
 # Loop through points in time
 # ---------------------------------------------------------------------------- #
@@ -69,6 +79,7 @@ for time_idx in time_idxs:
     field_data = extract_gusto_field(data_file, field_name, time_idx=time_idx)
     coords_X, coords_Y = extract_gusto_coords(data_file, field_name)
     time = data_file['time'][time_idx] / (24*60*60)
+
     # ------------------------------------------------------------------------ #
     # Extract wind data
     # ------------------------------------------------------------------------ #
@@ -76,6 +87,7 @@ for time_idx in time_idxs:
         wind_data_X = extract_gusto_field(data_file, wind_name_X, time_idx=time_idx)
         wind_data_Y = extract_gusto_field(data_file, wind_name_Y, time_idx=time_idx)
         wind_coords_X, wind_coords_Y = extract_gusto_coords(data_file, wind_name_X)
+
     # ------------------------------------------------------------------------ #
     # Transform coordinates
     # ------------------------------------------------------------------------ #
@@ -86,11 +98,11 @@ for time_idx in time_idxs:
     if plot_wind:
         wind_coords_X = (wind_coords_X - new_lon_extents[0]) * (new_lon_extents[1] - new_lon_extents[0]) / Lx
         wind_coords_Y = (wind_coords_Y - new_lat_extents[0]) * (new_lat_extents[1] - new_lat_extents[0]) / Lx
+
     # ------------------------------------------------------------------------ #
     # Plot data
     # ------------------------------------------------------------------------ #
-    fig = plt.figure(figsize=(5, 5))
-    ax = fig.add_subplot(1, 1, 1, projection=projection)
+    ax = fig.add_subplot(2, 3, time_idx+1, projection=projection)
     ax.stock_img()
     ax.coastlines()
 
@@ -108,20 +120,25 @@ for time_idx in time_idxs:
     ax.set_xlim(new_lon_xlims)
     ax.set_ylim(new_lat_ylims)
 
-    # ------------------------------------------------------------------------ #
-    # Manually add colorbar as it is difficult to get it into the correct position
-    # ------------------------------------------------------------------------ #
-    cbar_format = '{x:.0f}'
-    cbar_ticks = [0, 2]
-    cbar_ax = fig.add_axes([0.925, 0.11, 0.025, 0.7725])
-    cb = fig.colorbar(cf, cax=cbar_ax, format=cbar_format, ticks=cbar_ticks,
-                      orientation='vertical', ticklocation='right')
-    cb.set_label(field_label, labelpad=-5)
+# ---------------------------------------------------------------------------- #
+# Manually add colorbar as it is difficult to get it into the correct position
+# ---------------------------------------------------------------------------- #
 
-    # ------------------------------------------------------------------------ #
-    # Save figure
-    # ------------------------------------------------------------------------ #
-    plot_name = f'{plot_stem}_{time_idx:02d}.png'
-    print(f'Saving figure to {plot_name}')
-    fig.savefig(plot_name, bbox_inches='tight')
-    plt.close()
+fig.subplots_adjust(wspace=-0.05)
+
+cbar_format = '{x:.0f}'
+cbar_ticks = [0, 2]
+cbar_ax = fig.add_axes([0.925, 0.11, 0.025, 0.7725])
+cb = fig.colorbar(
+    cf, cax=cbar_ax, format=cbar_format, ticks=cbar_ticks,
+    orientation='vertical', ticklocation='right'
+)
+cb.set_label(field_label, labelpad=-5)
+
+# ---------------------------------------------------------------------------- #
+# Save figure
+# ---------------------------------------------------------------------------- #
+plot_name = f'{plot_stem}.png'
+print(f'Saving figure to {plot_name}')
+fig.savefig(plot_name, bbox_inches='tight')
+plt.close()

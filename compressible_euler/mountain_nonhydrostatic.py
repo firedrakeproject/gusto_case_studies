@@ -11,14 +11,14 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     as_vector, VectorFunctionSpace, PeriodicIntervalMesh, ExtrudedMesh,
-    SpatialCoordinate, exp, pi, cos, Function, conditional, Mesh, op2
+    SpatialCoordinate, exp, pi, cos, Function, conditional, Mesh, Constant
 )
 from gusto import (
-    Domain, CompressibleParameters, CompressibleSolver,
+    Domain, CompressibleParameters, CompressibleSolver, logger,
     CompressibleEulerEquations, OutputParameters, IO, SSPRK3,
     DGUpwind, SemiImplicitQuasiNewton, compressible_hydrostatic_balance,
-    SpongeLayerParameters, CourantNumber, ZComponent, Perturbation,
-    SUPGOptions, TrapeziumRule, remove_initial_w
+    SpongeLayerParameters, Exner, ZComponent, Perturbation,
+    SUPGOptions, TrapeziumRule, remove_initial_w, MaxKernel, MinKernel
 )
 
 mountain_nonhydrostatic_defaults = {
@@ -55,6 +55,9 @@ def mountain_nonhydrostatic(
     g = 9.80665              # acceleration due to gravity, in m/s^2
     cp = 1004.               # specific heat capacity at constant pressure
     sponge_mu = 0.15         # parameter for strength of sponge layer, in J/kg/K
+    exner_surf = 1.0         # maximum value of Exner pressure at surface
+    max_iterations = 10      # maximum number of hydrostatic balance iterations
+    tolerance = 1e-7         # tolerance for hydrostatic balance iteration
 
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
@@ -98,12 +101,11 @@ def mountain_nonhydrostatic(
     )
 
     # I/O
-    dirname = 'nonhydrostatic_mountain'
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dumplist=['u']
+        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )
     diagnostic_fields = [
-        CourantNumber(), ZComponent('u'), Perturbation('theta'),
+        Exner(parameters), ZComponent('u'), Perturbation('theta'),
         Perturbation('rho')
     ]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
@@ -155,42 +157,65 @@ def mountain_nonhydrostatic(
     exner = Function(Vr)
     rho_b = Function(Vr)
 
-    exner_params = {'ksp_type': 'gmres',
-                    'ksp_monitor_true_residual': None,
-                    'pc_type': 'python',
-                    'mat_type': 'matfree',
-                    'pc_python_type': 'gusto.VerticalHybridizationPC',
-                    # Vertical trace system is only coupled vertically in columns
-                    # block ILU is a direct solver!
-                    'vert_hybridization': {'ksp_type': 'preonly',
-                                           'pc_type': 'bjacobi',
-                                           'sub_pc_type': 'ilu'}}
+    # Set up kernels to evaluate global minima and maxima of fields
+    min_kernel = MinKernel()
+    max_kernel = MaxKernel()
 
+    # First solve hydrostatic balance that gives Exner = 1 at bottom boundary
+    # This gives us a guess for the top boundary condition
+    bottom_boundary = Constant(exner_surf, domain=mesh)
+    logger.info(f'Solving hydrostatic with bottom Exner of {exner_surf}')
     compressible_hydrostatic_balance(
-        eqns, theta_b, rho_b, exner, top=True, exner_boundary=0.5,
-        params=exner_params
+        eqns, theta_b, rho_b, exner, top=False, exner_boundary=bottom_boundary
     )
 
-    def minimum(f):
-        fmin = op2.Global(1, [1000], dtype=float)
-        op2.par_loop(op2.Kernel("""
-    static void minify(double *a, double *b) {
-        a[0] = a[0] > fabs(b[0]) ? fabs(b[0]) : a[0];
-    }
-    """, "minify"), f.dof_dset.set, fmin(op2.MIN), f.dat(op2.READ))
-        return fmin.data[0]
-
-    p0 = minimum(exner)
+    # Solve hydrostatic balance again, but now use minimum value from first
+    # solve as the *top* boundary condition for Exner
+    top_value = min_kernel.apply(exner)
+    top_boundary = Constant(top_value, domain=mesh)
+    logger.info(f'Solving hydrostatic with top Exner of {top_value}')
     compressible_hydrostatic_balance(
-        eqns, theta_b, rho_b, exner, top=True, params=exner_params
+        eqns, theta_b, rho_b, exner, top=True, exner_boundary=top_boundary
     )
-    p1 = minimum(exner)
-    alpha = 2.*(p1 - p0)
-    beta = p1 - alpha
-    exner_top = (1. - beta) / alpha
+
+    max_bottom_value = max_kernel.apply(exner)
+
+    # Now we iterate, adjusting the top boundary condition, until this gives
+    # a maximum value of 1.0 at the surface
+    lower_top_guess = 0.9*top_value
+    upper_top_guess = 1.2*top_value
+    for i in range(max_iterations):
+        # If max bottom Exner value is equal to desired value, stop iteration
+        if abs(max_bottom_value - exner_surf) < tolerance:
+            break
+
+        # Make new guess by average of previous guesses
+        top_guess = 0.5*(lower_top_guess + upper_top_guess)
+        top_boundary.assign(top_guess)
+
+        logger.info(
+            f'Solving hydrostatic balance iteration {i}, with top Exner value '
+            + f'of {top_guess}'
+        )
+
+        compressible_hydrostatic_balance(
+            eqns, theta_b, rho_b, exner, top=True, exner_boundary=top_boundary
+        )
+
+        max_bottom_value = max_kernel.apply(exner)
+
+        # Adjust guesses based on new value
+        if max_bottom_value < exner_surf:
+            lower_top_guess = top_guess
+        else:
+            upper_top_guess = top_guess
+
+    logger.info(f'Final max bottom Exner value of {max_bottom_value}')
+
+    # Perform a final solve to obtain hydrostatically balanced rho
     compressible_hydrostatic_balance(
-        eqns, theta_b, rho_b, exner, top=True, exner_boundary=exner_top,
-        solve_for_rho=True, params=exner_params
+        eqns, theta_b, rho_b, exner, top=True, exner_boundary=top_boundary,
+        solve_for_rho=True
     )
 
     theta0.assign(theta_b)

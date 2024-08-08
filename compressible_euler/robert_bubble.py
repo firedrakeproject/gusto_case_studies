@@ -18,7 +18,7 @@ from gusto import (
     Domain, CompressibleParameters, CompressibleSolver,
     CompressibleEulerEquations, OutputParameters, IO, SSPRK3, TrapeziumRule,
     DGUpwind, SemiImplicitQuasiNewton, compressible_hydrostatic_balance,
-    CourantNumber, Perturbation, EmbeddedDGOptions
+    Perturbation, EmbeddedDGOptions
 )
 
 robert_bubble_defaults = {
@@ -77,11 +77,9 @@ def robert_bubble(
     # I/O
     dirname = 'robert_bubble'
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dumplist=['u']
+        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )
-    diagnostic_fields = [
-        CourantNumber(), Perturbation('theta'), Perturbation('rho')
-    ]
+    diagnostic_fields = [Perturbation('theta')]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
