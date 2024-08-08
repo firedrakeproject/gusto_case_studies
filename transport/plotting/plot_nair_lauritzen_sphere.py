@@ -17,7 +17,7 @@ from tomplot import (
 
 # Whether to plot 'divergent' or 'non_divergent' case
 # Only the directory is changed dependent on the test
-test = 'divergent'
+test = 'non_divergent'
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots

@@ -4,7 +4,6 @@ Plots the non-hydrostatic mountain test case.
 This plots:
 (a) w @ t = 9000 s, (b) theta @ t = 9000 s
 """
-import numpy as np
 from os.path import abspath, dirname
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
@@ -116,9 +115,6 @@ for i, (ax, field_name, colour_scheme, field_label) in \
     time = data_file['time'][time_idx]
 
     contours = tomplot_contours(field_data)
-    if field_name == 'u_z':
-        print('WARNING: w values need updating')
-        contours = np.linspace(-1.2e-2, 1.2e-2, 13)
     cmap, lines = tomplot_cmap(contours, colour_scheme, remove_contour=0.0)
 
     # Plot data ----------------------------------------------------------------
@@ -128,7 +124,9 @@ for i, (ax, field_name, colour_scheme, field_label) in \
     )
 
     add_colorbar_ax(ax, cf, field_label, location='bottom')
-    tomplot_field_title(ax, None, minmax=True, field_data=field_data)
+    tomplot_field_title(
+        ax, None, minmax=True, field_data=field_data, minmax_format='.3f'
+    )
 
     # Labels -------------------------------------------------------------------
     if i == 0:
