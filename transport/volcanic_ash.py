@@ -10,7 +10,8 @@ The setup here uses a plane with the order 1 finite elements.
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
-    RectangleMesh, exp, SpatialCoordinate, pi, Constant, sin, cos, sqrt, grad
+    RectangleMesh, exp, SpatialCoordinate, pi, Constant, sin, cos, sqrt, grad,
+    Function, Projector, Interpolator
 )
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, CourantNumber, XComponent,
@@ -114,19 +115,32 @@ def volcanic_ash(
     ash0.interpolate(Constant(0.0)*-basic_expression)
 
     # Transporting wind ------------------------------------------------------ #
-    def transporting_wind(t):
-        # Divergence-free wind. A series of sines/cosines with different time factors
-        psi_expr = (0.25*Lx/pi)*umax*(
-            sin(pi*x/Lx)*sin(pi*y/Ly)
-            + 0.15*sin(2*pi*x/Lx)*sin(2*pi*y/Ly)*(1.0 + cos(2*pi*omega22*t))
-            + 0.25*sin(2*pi*x/Lx)*sin(pi*y/Ly)*sin(2*pi*omega21*(t-0.7*twind))
-            + 0.17*sin(pi*x/Lx)*sin(2*pi*y/Ly)*cos(2*pi*omega12*(t+0.2*twind))
-            + 0.12*sin(4*pi*x/Lx)*sin(4*pi*y/Ly)*(1.0 + sin(2*pi*omega44*(t-0.83*twind)))
-        )
 
-        return domain.perp(grad(psi_expr))
+    H1 = domain.spaces('H1')
+    psi = Function(H1)
+    u0 = stepper.fields("u")
 
-    stepper.setup_prescribed_expr(transporting_wind)
+    t = stepper.t
+    psi_expr = (0.25*Lx/pi)*umax*(
+        sin(pi*x/Lx)*sin(pi*y/Ly)
+        + 0.15*sin(2*pi*x/Lx)*sin(2*pi*y/Ly)*(1.0 + cos(2*pi*omega22*t))
+        + 0.25*sin(2*pi*x/Lx)*sin(pi*y/Ly)*sin(2*pi*omega21*(t-0.7*twind))
+        + 0.17*sin(pi*x/Lx)*sin(2*pi*y/Ly)*cos(2*pi*omega12*(t+0.2*twind))
+        + 0.12*sin(4*pi*x/Lx)*sin(4*pi*y/Ly)*(1.0 + sin(2*pi*omega44*(t-0.83*twind)))
+    )
+
+    u_expr = domain.perp(grad(psi))
+
+    psi_interpolator = Interpolator(psi_expr, psi)
+    u_projector = Projector(u_expr, u0)
+
+    # Set up the non-divergent, time-varying, velocity field
+    def apply_prescribed_velocity(t):
+        psi_interpolator.interpolate()
+        u_projector.project()
+        return
+
+    stepper.setup_prescribed_apply(apply_prescribed_velocity)
 
     # ------------------------------------------------------------------------ #
     # Run

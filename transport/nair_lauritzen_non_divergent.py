@@ -16,7 +16,8 @@ The setup here uses an icosahedral sphere with the order 1 finite elements.
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
-    exp, cos, sin, conditional, SpatialCoordinate, pi, min_value, grad
+    exp, cos, sin, conditional, SpatialCoordinate, pi, min_value, grad,
+    Function, Projector, Interpolator
 )
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, IO, lonlatr_from_xyz, SSPRK3,
@@ -98,20 +99,31 @@ def nair_lauritzen_non_divergent(
     # Transporting wind ------------------------------------------------------ #
     lamda, theta, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
 
+    H1 = domain.spaces('H1')
+    psi = Function(H1)
+    u0 = stepper.fields("u")
+
+    k = 10.*radius/tau
+    lamda_prime = lamda - 2*pi*stepper.t/tau
+
+    # Divergence-free wind, obtained from stream function
+    psi_expr = radius*(
+        k*(sin(lamda_prime)*cos(theta))**2*cos(pi*stepper.t/tau)
+        - 2.*pi*radius*sin(theta)/tau
+    )
+
+    u_expr = domain.perp(grad(psi))
+
+    psi_interpolator = Interpolator(psi_expr, psi)
+    u_projector = Projector(u_expr, u0)
+
     # Set up the non-divergent, time-varying, velocity field
-    def u_t(t):
-        k = 10.*radius/tau
-        lamda_prime = lamda - 2*pi*t/tau
+    def apply_prescribed_velocity(t):
+        psi_interpolator.interpolate()
+        u_projector.project()
+        return
 
-        # Divergence-free wind, obtained from stream function
-        psi_expr = radius*(
-            k*(sin(lamda_prime)*cos(theta))**2*cos(pi*t/tau)
-            - 2.*pi*radius*sin(theta)/tau
-        )
-
-        return domain.perp(grad(psi_expr))
-
-    stepper.setup_prescribed_expr(u_t)
+    stepper.setup_prescribed_apply(apply_prescribed_velocity)
 
     if initial_conditions == 'cosine_bells':
 
@@ -163,10 +175,8 @@ def nair_lauritzen_non_divergent(
         raise ValueError('Specified initial condition is not valid')
 
     # Set fields
-    u0 = stepper.fields("u")
     D0 = stepper.fields("D")
     D0.interpolate(Dexpr)
-    u0.project(u_t(0.))
 
     # ------------------------------------------------------------------------ #
     # Run
