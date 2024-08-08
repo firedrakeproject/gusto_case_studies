@@ -28,7 +28,7 @@ results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_ou
 plot_stem = f'{abspath(dirname(__file__))}/../figures/{test}'
 
 # ---------------------------------------------------------------------------- #
-# Initial plot details
+# Plot details
 # ---------------------------------------------------------------------------- #
 field_names = ['rho_d', 'rho_d', 'rho_d',
                'm_X', 'm_X', 'm_X']

@@ -51,6 +51,8 @@ def moist_bryan_fritsch(
     zc = 2000.                # vertical centre of bubble, in m
     rc = 2000.                # radius of bubble, in m
     Tdash = 2.0               # strength of temperature perturbation, in K
+    Tsurf = 320.0             # background theta_e value, in K
+    total_water = 0.02        # total moisture mixing ratio, in kg/kg
 
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
@@ -77,7 +79,7 @@ def moist_bryan_fritsch(
 
     # I/O
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dumplist=['u']
+        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )
     diagnostic_fields = [Theta_e(eqns)]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
@@ -126,8 +128,6 @@ def moist_bryan_fritsch(
     dxp = dx(degree=(quadrature_degree))
 
     # Define constant theta_e and water_t
-    Tsurf = 320.0
-    total_water = 0.02
     theta_e = Function(Vt).assign(Tsurf)
     water_t = Function(Vt).assign(total_water)
 
