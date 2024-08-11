@@ -17,7 +17,7 @@ the repository:
 
 # Add or update a plotting script
 Here is a checklist of things that should be done to add a new plotting script to the repository:
-- [ ] The plotting script has been prepared from the template in `templates/template_plot.py` or another acceptable plotting script
+- [ ] The plotting script has been prepared from the template in `templates/template_plotting_script.py` or another acceptable plotting script
 - [ ] The plot follows the Good Plot Guide in [`tomplot/good_plot_guide.md`](https://github.com/tommbendall/tomplot/blob/main/good_plot_guide.md)
 - [ ] Relevant initial and final fields are plotted
 - [ ] The figures produced have been added to the repository
