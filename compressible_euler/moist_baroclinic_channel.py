@@ -100,7 +100,7 @@ def moist_baroclinic_channel(
     # I/O
     dirname = 'moist_baroclinic_channel'
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dump_nc=True,
+        dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False,
         dumplist=['cloud_water']
     )
     diagnostic_fields = [Perturbation('theta')]
