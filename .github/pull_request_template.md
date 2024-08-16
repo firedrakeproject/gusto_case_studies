@@ -1,16 +1,26 @@
 # Add or update a Gusto case study
-Here is a checklist of things that must be done before a new case study
-will be included:
-- [ ] Readme with:
-    - [ ] Instructions for running the case study.
-    - [ ] Instructions for reproducing included checkpoint and image.
-    - [ ]
-- [ ] Case study as a function
-- [ ] Test added to the root directory
-- [ ] Output checkpoint (or link to GH-LFS of the checkpoint)
-- [ ] Image of the case study
-- [ ]
+Here is a checklist of things that should be done to add a new case study to
+the repository:
+- [ ] The case study has been prepared from the case studies template in `templates/template_case_study.py`. This ensures that the case study:
+  - [ ] begins with documentation of the case
+  - [ ] includes a dictionary of default argument values
+  - [ ] is run through a function
+  - [ ] follows the standard order of sections:
+    1. test case parameters
+    2. set up of model objects
+    3. initial conditions
+    4. run
+  - [ ] includes a `__main__` routine with arg-parsing of command line arguments
+- [ ] The case study has a quick-to-run test form in the relevant `test_*.py` file, so that it will be run as part of CI
+- [ ] A plotting script has been added to the relevant `plotting` directory, with a name that matches the case study script
+- [ ] Neat figures have been added to the relevant `figures` directory, with names that match the case study script
 
+# Add or update a plotting script
+Here is a checklist of things that should be done to add a new plotting script to the repository:
+- [ ] The plotting script has been prepared from the template in `templates/template_plotting_script.py` or another acceptable plotting script
+- [ ] The plot follows the Good Plot Guide in [`tomplot/good_plot_guide.md`](https://github.com/tommbendall/tomplot/blob/main/good_plot_guide.md)
+- [ ] Relevant initial and final fields are plotted
+- [ ] The figures produced have been added to the repository
 
 <!--
 Here is a comment that can include verbose instructions that will not
