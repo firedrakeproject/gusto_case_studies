@@ -94,10 +94,9 @@ def dry_baroclinic_sphere(
     )
 
     # Equations
-    params = CompressibleParameters()
-    omega_vec = as_vector([0, 0, Constant(omega)])
+    params = CompressibleParameters(Omega=omega)
     eqn = CompressibleEulerEquations(
-        domain, params, Omega=omega_vec, u_transport_option=u_eqn_type
+        domain, params, u_transport_option=u_eqn_type
     )
 
     # Outputting and IO
