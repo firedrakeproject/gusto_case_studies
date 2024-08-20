@@ -12,9 +12,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt, exp, Constant,
-    Function, as_vector, acos, errornorm, norm, le, ge, conditional,
-    NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction,
-    inner, dx
+    Function, acos, errornorm, norm, le, ge, conditional, inner, dx,
+    NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction
 )
 from gusto import (
     Domain, GeneralCubedSphereMesh, CompressibleParameters, CompressibleSolver,
