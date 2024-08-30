@@ -46,17 +46,15 @@ cbars = [False, False, True,
 
 rho_contours = np.linspace(0.0, 1.00, 15)
 rho_colour_scheme = 'gist_earth_r'
-rho_contour_to_remove = None
 rho_field_label = r'$\rho_d$ (kg m$^{-3}$)'
 
 X_contours = np.linspace(0, 4e-6, 15)
-X_colour_scheme = 'RdBu_r'
-X_contour_to_remove = None
+X_colour_scheme = 'Purples'
 X_field_label = r'$X$ (kg kg$^{-1}$)'
 
-X2_contours = np.linspace(0, 2e-6, 15)
-X2_colour_scheme = 'Purples'
-X2_contour_to_remove = None
+X2_contours_first = np.linspace(0.0, 2.000000000001e-6, 15)
+X2_contours = np.linspace(0.0, 2.0e-6, 15)
+X2_colour_scheme = 'Greens'
 X2_field_label = r'$X2$ (kg kg$^{-1}$)'
 
 contour_method = 'tricontour'
@@ -102,7 +100,10 @@ for i, (ax, time_idx, field_name, cbar) in \
         data_format = '.2e'
 
     elif field_name == 'X2':
-        contours = X2_contours
+        if time_idx == 0:
+            contours = X2_contours_first
+        else:
+            contours = X2_contours
         colour_scheme = X2_colour_scheme
         field_label = X2_field_label
         cmap, lines = tomplot_cmap(contours, colour_scheme, remove_contour=None)

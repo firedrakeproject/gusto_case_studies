@@ -23,9 +23,9 @@ from gusto import (
 
 terminator_toy_defaults = {
     'ncells_per_edge': 16,     # num points per icosahedron edge (ref level 4)
-    'dt': 900.0,              # 15 minutes
+    'dt': 450.0,              # 7.5 minutes
     'tmax': 12.*24.*60.*60.,  # 12 days
-    'dumpfreq': 288,          # once every 3 days with default values
+    'dumpfreq': 576,          # once every 3 days with default values
     'dirname': 'terminator_toy'
 }
 
