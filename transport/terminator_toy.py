@@ -22,7 +22,7 @@ from gusto import (
 )
 
 terminator_toy_defaults = {
-    'ncells_per_edge': 16,     # num points per icosahedron edge (ref level 4)
+    'ncells_per_edge': 16,    # num points per icosahedron edge (ref level 4)
     'dt': 450.0,              # 7.5 minutes
     'tmax': 12.*24.*60.*60.,  # 12 days
     'dumpfreq': 576,          # once every 3 days with default values
@@ -52,6 +52,7 @@ def terminator_toy(
     theta_c2 = 0.          # central latitude of second chemical blob, in rad
     lamda_c1 = -pi/4.      # central longitude of first chemical blob, in rad
     lamda_c2 = pi/4.       # central longitude of second chemical blob, in rad
+    b0 = 5                 # controls the width of the chemical blobs
 
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
@@ -165,8 +166,6 @@ def terminator_toy(
     X, Y, Z = xyz
     X1, Y1, Z1 = xyz_from_lonlatr(lamda_c1, theta_c1, radius)
     X2, Y2, Z2 = xyz_from_lonlatr(lamda_c2, theta_c2, radius)
-
-    b0 = 5
 
     # The initial condition for the density is two Gaussians
     g1 = exp(-(b0/(radius**2))*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
