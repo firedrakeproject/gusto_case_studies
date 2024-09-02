@@ -89,11 +89,10 @@ def moist_baroclinic_channel(
     x, y, z = SpatialCoordinate(mesh)
 
     # Equation
-    params = CompressibleParameters()
+    params = CompressibleParameters(Omega=omega*sin(phi0))
     tracers = [WaterVapour(), CloudWater()]
-    coriolis = 2*omega*sin(phi0)*domain.k
     eqns = CompressibleEulerEquations(
-        domain, params, active_tracers=tracers, Omega=coriolis/2,
+        domain, params, active_tracers=tracers,
         no_normal_flow_bc_ids=[1, 2], u_transport_option=u_eqn_type
     )
 

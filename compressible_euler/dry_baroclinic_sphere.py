@@ -12,9 +12,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     ExtrudedMesh, SpatialCoordinate, cos, sin, pi, sqrt, exp, Constant,
-    Function, as_vector, acos, errornorm, norm, le, ge, conditional,
-    NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction,
-    inner, dx
+    Function, acos, errornorm, norm, le, ge, conditional, inner, dx,
+    NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction
 )
 from gusto import (
     Domain, GeneralCubedSphereMesh, CompressibleParameters, CompressibleSolver,
@@ -94,10 +93,9 @@ def dry_baroclinic_sphere(
     )
 
     # Equations
-    params = CompressibleParameters()
-    omega_vec = as_vector([0, 0, Constant(omega)])
+    params = CompressibleParameters(Omega=omega)
     eqn = CompressibleEulerEquations(
-        domain, params, Omega=omega_vec, u_transport_option=u_eqn_type
+        domain, params, u_transport_option=u_eqn_type
     )
 
     # Outputting and IO
