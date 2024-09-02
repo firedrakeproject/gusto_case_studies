@@ -18,14 +18,14 @@ from gusto import (
     DGUpwind, CoupledTransportEquation, BackwardEuler, DG1Limiter, Sum,
     TerminatorToy, TransportEquationType, TracerVariableType, TracerDensity,
     MixedFSLimiter, SplitPrescribedTransport, GeneralIcosahedralSphereMesh,
-    great_arc_angle, xyz_vector_from_lonlatr
+    great_arc_angle, xyz_vector_from_lonlatr, xyz_from_lonlatr
 )
 
 terminator_toy_defaults = {
-    'ncells_per_edge': 8,     # num points per icosahedron edge (ref level 3)
-    'dt': 900.0,              # 15 minutes
+    'ncells_per_edge': 16,    # num points per icosahedron edge (ref level 4)
+    'dt': 450.0,              # 7.5 minutes
     'tmax': 12.*24.*60.*60.,  # 12 days
-    'dumpfreq': 288,          # once every 3 days with default values
+    'dumpfreq': 576,          # once every 3 days with default values
     'dirname': 'terminator_toy'
 }
 
@@ -52,6 +52,7 @@ def terminator_toy(
     theta_c2 = 0.          # central latitude of second chemical blob, in rad
     lamda_c1 = -pi/4.      # central longitude of first chemical blob, in rad
     lamda_c2 = pi/4.       # central longitude of second chemical blob, in rad
+    b0 = 5                 # controls the width of the chemical blobs
 
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
@@ -109,6 +110,7 @@ def terminator_toy(
     # Define limiters for the interacting species
     limiter_space = domain.spaces('DG')
     sublimiters = {
+        'rho_d': DG1Limiter(limiter_space),
         'X': DG1Limiter(limiter_space),
         'X2': DG1Limiter(limiter_space)
     }
@@ -124,7 +126,7 @@ def terminator_toy(
     xyz = SpatialCoordinate(mesh)
     lamda, theta, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
     k1 = max_value(
-        0, k1_max*cos(great_arc_angle(lamda, lamda_cr, theta, theta_cr))
+        0, k1_max*cos(great_arc_angle(lamda, theta, lamda_cr, theta_cr))
     )
 
     terminator_stepper = BackwardEuler(domain)
@@ -162,18 +164,12 @@ def terminator_toy(
     stepper.setup_prescribed_expr(u_t)
 
     X, Y, Z = xyz
+    X1, Y1, Z1 = xyz_from_lonlatr(lamda_c1, theta_c1, radius)
+    X2, Y2, Z2 = xyz_from_lonlatr(lamda_c2, theta_c2, radius)
 
-    X1 = cos(theta_c1)*cos(lamda_c1)
-    Y1 = cos(theta_c1)*sin(lamda_c1)
-    Z1 = sin(theta_c1)
-
-    X2 = cos(theta_c2)*cos(lamda_c2)
-    Y2 = cos(theta_c2)*sin(lamda_c2)
-    Z2 = sin(theta_c2)
-
-    g1 = exp(-5*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
-    g2 = exp(-5*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
-
+    # The initial condition for the density is two Gaussians
+    g1 = exp(-(b0/(radius**2))*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
+    g2 = exp(-(b0/(radius**2))*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
     rho_expr = g1 + g2
 
     X_T_0 = 4e-6
