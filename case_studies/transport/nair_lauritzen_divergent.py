@@ -27,7 +27,7 @@ from gusto import (
 nair_lauritzen_divergent_defaults = {
     'initial_conditions': 'slotted_cylinder',  # one of 'slotted_cylinder',
                                                # 'cosine_bells' or 'gaussian'
-    'background_flow': True,  # whether background flow is applied
+    'background_flow': False,  # whether background flow is applied
     'ncells_per_edge': 16,    # num points per icosahedron edge (ref level 4)
     'dt': 900.0,              # 15 minutes
     'tmax': 12.*24.*60.*60.,  # 12 days
