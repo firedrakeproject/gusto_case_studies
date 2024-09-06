@@ -19,7 +19,6 @@ def test_four_part_sbr():
 def test_nair_lauritzen_divergent_cylinder():
     nair_lauritzen_divergent(
         initial_conditions='slotted_cylinder',
-        background_flow=True,
         ncells_per_edge=3,
         dt=900.0,
         tmax=1800.0,
@@ -31,7 +30,7 @@ def test_nair_lauritzen_divergent_cylinder():
 def test_nair_lauritzen_divergent_cosine():
     nair_lauritzen_divergent(
         initial_conditions='cosine_bells',
-        background_flow=False,
+        no_background_flow=True,
         ncells_per_edge=3,
         dt=900.0,
         tmax=1800.0,
@@ -43,7 +42,6 @@ def test_nair_lauritzen_divergent_cosine():
 def test_nair_lauritzen_divergent_gaussian():
     nair_lauritzen_divergent(
         initial_conditions='gaussian',
-        background_flow=True,
         ncells_per_edge=3,
         dt=900.0,
         tmax=1800.0,
