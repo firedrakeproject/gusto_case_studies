@@ -27,18 +27,18 @@ from gusto import (
 nair_lauritzen_divergent_defaults = {
     'initial_conditions': 'slotted_cylinder',  # one of 'slotted_cylinder',
                                                # 'cosine_bells' or 'gaussian'
-    'background_flow': True,  # whether background flow is applied
-    'ncells_per_edge': 16,    # num points per icosahedron edge (ref level 4)
-    'dt': 900.0,              # 15 minutes
-    'tmax': 12.*24.*60.*60.,  # 12 days
-    'dumpfreq': 288,          # once every 3 days with default values
+    'no_background_flow': False,  # option to remove the background flow
+    'ncells_per_edge': 16,        # num points per icosahedron edge (ref level 4)
+    'dt': 900.0,                  # 15 minutes
+    'tmax': 12.*24.*60.*60.,      # 12 days
+    'dumpfreq': 288,              # once every 3 days with default values
     'dirname': 'nair_lauritzen_divergent'
 }
 
 
 def nair_lauritzen_divergent(
         initial_conditions=nair_lauritzen_divergent_defaults['initial_conditions'],
-        background_flow=nair_lauritzen_divergent_defaults['background_flow'],
+        no_background_flow=nair_lauritzen_divergent_defaults['no_background_flow'],
         ncells_per_edge=nair_lauritzen_divergent_defaults['ncells_per_edge'],
         dt=nair_lauritzen_divergent_defaults['dt'],
         tmax=nair_lauritzen_divergent_defaults['tmax'],
@@ -101,7 +101,7 @@ def nair_lauritzen_divergent(
     lamda, theta, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
 
     # Set up the divergent, time-varying, velocity field
-    if background_flow:
+    if not no_background_flow:
         def u_t(t):
             k = 5.*radius/tau
             u_background = 2*pi*radius/tau
@@ -208,10 +208,11 @@ if __name__ == "__main__":
         default=nair_lauritzen_divergent_defaults['initial_conditions']
     )
     parser.add_argument(
-        '--background_flow',
-        help="Whether the transporting velocity includes a background flow",
+        '--no_background_flow',
+        help="Whether to remove the background flow of the transporting velocity. "
+             + "This defaults to False, which means there is a background flow.",
         type=bool,
-        default=nair_lauritzen_divergent_defaults['background_flow']
+        default=nair_lauritzen_divergent_defaults['no_background_flow']
     )
     parser.add_argument(
         '--ncells_per_edge',
