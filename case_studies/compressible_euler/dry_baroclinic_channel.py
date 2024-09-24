@@ -32,7 +32,7 @@ dry_baroclinic_channel_defaults = {
     'nlayers': 20,             # number of layers in mesh
     'dt': 300,                # 5 minutes
     'tmax': 15.*24.*60.*60.,    # 15 days
-    'dumpfreq': 10,           # Corresponds to every 12 hours with default opts
+    'dumpfreq': 144,           # Corresponds to every 12 hours with default opts
     'dirname': 'dry_baro_channel'  # output directory
 }
 
