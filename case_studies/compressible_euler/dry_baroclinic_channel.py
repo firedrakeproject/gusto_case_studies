@@ -23,7 +23,8 @@ from gusto import (
     Perturbation, SaturationAdjustment, ForwardEuler, thermodynamics,
     Temperature, Exner, Pressure,
     time_derivative, transport, implicit, explicit, split_continuity_form,
-    SDC, IMEX_Euler, Timestepper, IMEX_SSP3, SpongeLayerParameters
+    SDC, IMEX_Euler, Timestepper, IMEX_SSP3, SpongeLayerParameters, IMEX_ARK2,
+    XComponent, YComponent, ZComponent, ImplicitMidpoint, prognostic
 )
 
 dry_baroclinic_channel_defaults = {
@@ -31,8 +32,8 @@ dry_baroclinic_channel_defaults = {
     'ny': 24,                  # number of columns in y-direction
     'nlayers': 20,             # number of layers in mesh
     'dt': 300,                # 5 minutes
-    'tmax': 15.*24.*60.*60.,    # 15 days
-    'dumpfreq': 144,           # Corresponds to every 12 hours with default opts
+    'tmax': 25*300,       # 15 days
+    'dumpfreq': 5,           # Corresponds to every 12 hours with default opts
     'dirname': 'dry_baro_channel'  # output directory
 }
 
@@ -72,7 +73,7 @@ def dry_baroclinic_channel(
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
     element_order = 1
-    u_eqn_type = 'vector_invariant_form'
+    u_eqn_type = 'circulation_form'
     max_iterations = 40          # max num of iterations for finding eta coords
     tolerance = 1e-10            # tolerance of error in finding eta coords
 
@@ -93,7 +94,7 @@ def dry_baroclinic_channel(
     params = CompressibleParameters(Omega=omega*sin(phi0))
     eqns = CompressibleEulerEquations(
         domain, params,
-        no_normal_flow_bc_ids=[1, 2], sponge_options=sponge, u_transport_option=u_eqn_type
+        no_normal_flow_bc_ids=[1, 2]
     )
 
     # Check number of optimal cores
@@ -101,13 +102,14 @@ def dry_baroclinic_channel(
     eqns = split_continuity_form(eqns)
     eqns.label_terms(lambda t: not any(t.has_label(time_derivative, transport)), implicit)
     eqns.label_terms(lambda t: t.has_label(transport), explicit)
+    #eqns.label_terms(lambda t: t.get(prognostic) == "theta" and t.has_label(transport), implicit)
 
     # I/O
-    dirname = 'dry_baroclinic_channel_sdc'
+    dirname = 'dry_baroclinic_channel_imex2'
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
-    diagnostic_fields = [Perturbation('theta'), Temperature(eqns), Pressure(eqns)]
+    diagnostic_fields = [Perturbation('theta'), Temperature(eqns), Pressure(eqns), XComponent('u'), YComponent('u'), ZComponent('u')]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     transport_methods = [
@@ -118,15 +120,12 @@ def dry_baroclinic_channel(
     nl_solver_parameters = {
     # Nonlinear solver: Newton linesearch
     "snes_type": "newtonls",
-    'snes_converged_reason': None,
     "snes_rtol": 1e-4,
     "snes_atol": 1e-5,
     "snes_max_it": 50,
 
     # Linear solver: FGMRES with schur complement preconditioner
     "ksp_type": "fgmres",
-    'ksp_converged_reason': None,
-    'ksp_monitor_true_residual': None,
     "ksp_rtol": 1e-8,
     "ksp_atol": 1e-7,
     "pc_type": "fieldsplit",
@@ -143,18 +142,16 @@ def dry_baroclinic_channel(
         "ksp_rtol": 1e-8,
         "ksp_atol": 1e-7,
         "ksp_max_it": 200,
-        'ksp_converged_reason': None,
-        'ksp_monitor_true_residual': None,
         "pc_python_type": "firedrake.AssembledPC",
         "assembled": {
             "pc_type": "python",
             "pc_python_type": "firedrake.ASMStarPC",
             "pc_star": {
                 "construct_dim": 0,
-                "pc_asm_overlap": 1,
+                "pc_asm_overlap": 2,
                 "sub_sub": {
                     "pc_type": "ilu",
-                    "pc_factor_levels": 2,
+                    "pc_factor_levels": 4,
                     "pc_factor_reuse_ordering": True,
                     "pc_factor_fill": 1.2,
                 }
@@ -171,6 +168,24 @@ def dry_baroclinic_channel(
         "ksp_atol": 1e-7,
     },
 }
+    nl_solver_parameters = {
+    "snes_converged_reason": None,
+    "mat_type": "matfree",
+    "ksp_type": "fgmres",
+    "ksp_converged_reason": None,
+    "ksp_atol": 1e-5,
+    "ksp_rtol": 1e-5,
+    "ksp_max_it": 400,
+    "pc_type": "python",
+    "pc_python_type": "firedrake.AssembledPC",
+    "assembled_pc_type": "python",
+    "assembled_pc_python_type": "firedrake.ASMStarPC",
+    "assembled_pc_star_construct_dim": 0,
+    "assembled_pc_star_sub_sub_pc_factor_mat_ordering_type": "rcm",
+    "assembled_pc_star_sub_sub_pc_factor_reuse_ordering": None,
+    "assembled_pc_star_sub_sub_pc_factor_reuse_fill": None,
+    "assembled_pc_star_sub_sub_pc_factor_fill": 1.2}
+
 
     # IMEX time stepper
     scheme = IMEX_SSP3(domain, solver_parameters=nl_solver_parameters)
