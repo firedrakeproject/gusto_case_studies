@@ -178,7 +178,7 @@ def dry_baroclinic_channel(
     "ksp_max_it": 400,
     "pc_type": "python",
     "pc_python_type": "firedrake.AssembledPC",
-    "pc_star_sub_sub_pc_type": "lu",
+    "assembled_pc_star_sub_sub_pc_type": "lu",
     "assembled_pc_type": "python",
     "assembled_pc_python_type": "firedrake.ASMStarPC",
     "assembled_pc_star_construct_dim": 0,
