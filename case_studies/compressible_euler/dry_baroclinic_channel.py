@@ -105,7 +105,7 @@ def dry_baroclinic_channel(
     #eqns.label_terms(lambda t: t.get(prognostic) == "theta" and t.has_label(transport), implicit)
 
     # I/O
-    dirname = 'dry_baroclinic_channel_imex2'
+    dirname = 'dry_baroclinic_channel_imex3'
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
@@ -178,14 +178,14 @@ def dry_baroclinic_channel(
     "ksp_max_it": 400,
     "pc_type": "python",
     "pc_python_type": "firedrake.AssembledPC",
-    "assembled_pc_star_sub_sub_pc_type": "lu",
+    "assembled_pc_star_sub_sub_pc_type": "ilu",
     "assembled_pc_type": "python",
     "assembled_pc_python_type": "firedrake.ASMStarPC",
-    "assembled_pc_star_construct_dim": 0,
-    "assembled_pc_star_sub_sub_pc_factor_mat_ordering_type": "rcm",
-    "assembled_pc_star_sub_sub_pc_factor_reuse_ordering": None,
-    "assembled_pc_star_sub_sub_pc_factor_reuse_fill": None,
-    "assembled_pc_star_sub_sub_pc_factor_fill": 1.2}
+    "assembled_pc_star_construct_dim": 0}
+    #"assembled_pc_star_sub_sub_pc_factor_mat_ordering_type": "rcm",
+    #"assembled_pc_star_sub_sub_pc_factor_reuse_ordering": None,
+    #"assembled_pc_star_sub_sub_pc_factor_reuse_fill": None,
+    #"assembled_pc_star_sub_sub_pc_factor_fill": 1.2}
 
 
     # IMEX time stepper
