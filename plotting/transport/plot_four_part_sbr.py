@@ -17,15 +17,15 @@ from tomplot import (
 
 # Whether to plot 'divergent' or 'non_divergent' case
 # Only the directory is changed dependent on the test
-test = 'four_part_sbr'
+test = 'four_part_sbr_vorticity'
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
-results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_output.nc'
-plot_stem = f'{abspath(dirname(__file__))}/../figures/{test}'
+results_file_name = f'{abspath(dirname(__file__))}/../../../results/{test}/field_output.nc'
+plot_stem = f'{abspath(dirname(__file__))}/../../figures/{test}'
 
 # ---------------------------------------------------------------------------- #
 # Plot details
