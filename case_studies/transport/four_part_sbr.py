@@ -14,7 +14,7 @@ The setup here uses an icosahedral sphere with the order 1 finite elements.
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
-    exp, cos, sin, SpatialCoordinate, pi, Constant, Projector
+    exp, as_vector, SpatialCoordinate, pi, Constant, Projector
 )
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, IO, ZonalComponent,
@@ -99,32 +99,45 @@ def four_part_sbr(
     u_max = 2*pi*radius/tau
 
     # Velocity for first and third parts
-    u_zonal_1_3 = u_max*cos(theta)
-    u_merid_1_3 = Constant(0.0)*u_max
-    u_expr_1_3 = xyz_vector_from_lonlatr(
-        u_zonal_1_3, u_merid_1_3, Constant(0.0), xyz
-    )
+    u_x_1_3 = -u_max*xyz[1]/radius
+    u_y_1_3 = u_max*xyz[0]/radius
+    u_z_1_3 = Constant(0.0)*u_max
+    u_expr_1_3 = as_vector([u_x_1_3, u_y_1_3, u_z_1_3])
 
     # Velocity for second and fourth parts
-    u_zonal_2_4 = -u_max*cos(lamda)*sin(theta)
-    u_merid_2_4 = u_max*sin(lamda)*(cos(theta)**2 - sin(theta)**2)
-    u_expr_2_4 = xyz_vector_from_lonlatr(
-        u_zonal_2_4, u_merid_2_4, Constant(0.0), xyz
-    )
+    u_x_2_4 = Constant(0.0)*u_max
+    u_y_2_4 = u_max*xyz[2]/radius
+    u_z_2_4 = -u_max*xyz[1]/radius
+    u_expr_2_4 = as_vector([u_x_2_4, u_y_2_4, u_z_2_4])
 
     projector_1_3 = Projector(u_expr_1_3, stepper.fields('u'))
     projector_2_4 = Projector(u_expr_2_4, stepper.fields('u'))
 
+    rotation_done_dict = {}
+    for i in range(1, 5):
+        rotation_done_dict[i] = False
+
     def apply_u_t(t):
 
         if float(t) < tau/2.0:
-            projector_1_3.project()
+            if not rotation_done_dict[1]:
+                projector_1_3.project()
+                rotation_done_dict[1] = True
+
         elif float(t) < tau:
-            projector_2_4.project()
+            if not rotation_done_dict[2]:
+                projector_2_4.project()
+                rotation_done_dict[2] = True
+
         elif float(t) < 3.0*tau/2.0:
-            projector_1_3.project()
+            if not rotation_done_dict[3]:
+                projector_1_3.project()
+                rotation_done_dict[3] = True
+
         else:
-            projector_2_4.project()
+            if not rotation_done_dict[4]:
+                projector_2_4.project()
+                rotation_done_dict[4] = True
 
         return
 
