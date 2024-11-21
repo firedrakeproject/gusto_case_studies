@@ -18,7 +18,7 @@ from gusto import (
     CompressibleEulerEquations, OutputParameters, IO, SSPRK3,
     DGUpwind, SemiImplicitQuasiNewton, compressible_hydrostatic_balance,
     SpongeLayerParameters, Exner, ZComponent, Perturbation,
-    SUPGOptions, TrapeziumRule, remove_initial_w, MaxKernel, MinKernel
+    SUPGOptions, TrapeziumRule, MaxKernel, MinKernel
 )
 
 mountain_nonhydrostatic_defaults = {
@@ -220,8 +220,7 @@ def mountain_nonhydrostatic(
 
     theta0.assign(theta_b)
     rho0.assign(rho_b)
-    u0.project(as_vector([initial_wind, 0.0]))
-    remove_initial_w(u0)
+    u0.project(as_vector([initial_wind, 0.0]), bcs=eqns.bcs['u'])
 
     stepper.set_reference_profiles([('rho', rho_b), ('theta', theta_b)])
 
