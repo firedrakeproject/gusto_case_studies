@@ -11,8 +11,8 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, xyz_vector_from_lonlatr,
-    ShallowWaterParameters, ShallowWaterEquations, SUPGOptions,
-    lonlatr_from_xyz, GeneralIcosahedralSphereMesh, RelativeVorticity,
+    ShallowWaterParameters, ShallowWaterEquations,
+    lonlatr_from_xyz, GeneralCubedSphereMesh, RelativeVorticity,
     ZonalComponent, MeridionalComponent, RungeKuttaFormulation, SSPRK3,
     SemiImplicitQuasiNewton, ThermalSWSolver, NumericalIntegral
 )
@@ -20,10 +20,10 @@ from gusto import (
 import numpy as np
 
 thermal_galewsky_defaults = {
-    'ncells_per_edge': 16,     # number of cells per icosahedron edge
-    'dt': 900.0,               # 5 minutes
+    'ncells_per_edge': 32,     # number of cells per cubed sphere edge
+    'dt': 600.0,               # 10 minutes
     'tmax': 6.*24.*60.*60.,    # 6 days
-    'dumpfreq': 576,           # final time step with default options
+    'dumpfreq': 864,           # final time step with default options
     'dirname': 'thermal_galewsky'
 }
 
@@ -57,7 +57,7 @@ def thermal_galewsky(
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
 
-    alpha = 0.55
+    alpha = 0.5
     element_order = 1
     u_eqn_type = 'vector_advection_form'
 
@@ -66,8 +66,8 @@ def thermal_galewsky(
     # ------------------------------------------------------------------------ #
 
     # Domain
-    mesh = GeneralIcosahedralSphereMesh(radius, ncells_per_edge, degree=2)
-    domain = Domain(mesh, dt, "BDM", element_order)
+    mesh = GeneralCubedSphereMesh(radius, ncells_per_edge, degree=2)
+    domain = Domain(mesh, dt, "RTCF", element_order)
     xyz = SpatialCoordinate(mesh)
 
     # Equation
@@ -90,7 +90,7 @@ def thermal_galewsky(
 
     # Transport
     transported_fields = [
-        SSPRK3(domain, "u", subcycle_by_courant=0.25, options=SUPGOptions()),
+        SSPRK3(domain, "u", subcycle_by_courant=0.25),
         SSPRK3(
             domain, "D", subcycle_by_courant=0.25,
             rk_formulation=RungeKuttaFormulation.linear
@@ -216,7 +216,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--ncells_per_edge',
-        help="The number of cells per edge of icosahedron",
+        help="The number of cells per edge of cubed sphere",
         type=int,
         default=thermal_galewsky_defaults['ncells_per_edge']
     )

@@ -10,16 +10,16 @@ from firedrake import (
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, ShallowWaterParameters,
     ShallowWaterEquations, lonlatr_from_xyz, GeneralIcosahedralSphereMesh,
-    RelativeVorticity, RungeKuttaFormulation, SSPRK3, ThermalSWSolver,
+    RungeKuttaFormulation, SSPRK3, ThermalSWSolver, MeridionalComponent,
     SemiImplicitQuasiNewton, ForwardEuler, WaterVapour, CloudWater,
-    xyz_vector_from_lonlatr, SWSaturationAdjustment
+    xyz_vector_from_lonlatr, SWSaturationAdjustment, ZonalComponent
 )
 
 moist_thermal_gw_defaults = {
     'ncells_per_edge': 16,     # number of cells per icosahedron edge
     'dt': 900.0,               # 15 minutes
     'tmax': 5.*24.*60.*60.,    # 5 days
-    'dumpfreq': 48,            # dump twice per day
+    'dumpfreq': 96,            # dump once per day
     'dirname': 'moist_thermal_gw'
 }
 
@@ -71,9 +71,10 @@ def moist_thermal_gw(
 
     # IO
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dump_nc=False, dump_vtus=True
+        dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False,
+        dumplist=['b', 'water_vapour', 'cloud_water', 'D']
     )
-    diagnostic_fields = [RelativeVorticity()]
+    diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u')]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     transport_methods = [

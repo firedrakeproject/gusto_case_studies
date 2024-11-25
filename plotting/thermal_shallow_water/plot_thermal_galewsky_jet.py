@@ -6,10 +6,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 from netCDF4 import Dataset
 from tomplot import (
-    set_tomplot_style, tomplot_contours, tomplot_cmap, plot_contoured_field,
+    set_tomplot_style, tomplot_cmap, plot_contoured_field,
     add_colorbar_ax, plot_field_quivers, tomplot_field_title,
-    extract_gusto_coords, extract_gusto_field, apply_gusto_domain,
-    regrid_horizontal_slice
+    extract_gusto_coords, extract_gusto_field, regrid_horizontal_slice
 )
 
 # ---------------------------------------------------------------------------- #
@@ -17,7 +16,7 @@ from tomplot import (
 # ---------------------------------------------------------------------------- #
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
-results_file_name = f'{abspath(dirname(__file__))}/../../../results/thermal_galewsky/field_output.nc'
+results_file_name = f'{abspath(dirname(__file__))}/../../results/thermal_galewsky/field_output.nc'
 plot_stem = f'{abspath(dirname(__file__))}/../../figures/thermal_shallow_water/thermal_galewsky'
 
 # ---------------------------------------------------------------------------- #
