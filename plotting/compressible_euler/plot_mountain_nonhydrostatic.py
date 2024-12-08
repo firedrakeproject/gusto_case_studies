@@ -7,10 +7,12 @@ This plots:
 from os.path import abspath, dirname
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
+import numpy as np
+import pandas as pd
 from tomplot import (
     set_tomplot_style, tomplot_cmap, plot_contoured_field,
     add_colorbar_ax, tomplot_field_title, tomplot_contours,
-    extract_gusto_coords, extract_gusto_field,
+    extract_gusto_coords, extract_gusto_field, reshape_gusto_data
 )
 
 test = 'mountain_nonhydrostatic'
@@ -20,15 +22,22 @@ test = 'mountain_nonhydrostatic'
 # ---------------------------------------------------------------------------- #
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
-results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_output.nc'
+results_file_name = f'{abspath(dirname(__file__))}/../../../results/{test}/field_output.nc'
 plot_stem = f'{abspath(dirname(__file__))}/../../figures/compressible_euler/{test}'
 
 # ---------------------------------------------------------------------------- #
 # Final plot details
 # ---------------------------------------------------------------------------- #
-final_field_names = ['u_z', 'theta_perturbation']
-final_colour_schemes = ['PiYG', 'RdBu_r']
-final_field_labels = [r'$w$ (m s$^{-1}$)', r'$\Delta\theta$ (K)']
+final_field_names = ['u_z', 'theta_perturbation', 'u_z', 'theta_perturbation']
+final_colour_schemes = ['PiYG', 'RdBu_r', 'PiYG', 'RdBu_r']
+final_field_labels = [
+    r'$w$ (m s$^{-1}$)', r'$\Delta\theta$ (K)',
+    r'$w$ (m s$^{-1}$)', r'$\Delta\theta$ (K)'
+]
+final_contours = [
+    np.linspace(-0.04, 0.04, 21), np.linspace(-0.025, 0.025, 21),
+    np.linspace(-0.04, 0.04, 21), np.linspace(-0.025, 0.025, 21)
+]
 
 # ---------------------------------------------------------------------------- #
 # Initial plot details
@@ -40,7 +49,7 @@ initial_field_labels = [r'$\Pi$', r'$\theta$ (K)']
 # ---------------------------------------------------------------------------- #
 # General options
 # ---------------------------------------------------------------------------- #
-contour_method = 'tricontour'
+contour_method = 'contour'  # Need to use this method to show mountains!
 xlims = [0., 144.]
 ylims = [0., 35.]
 
@@ -51,6 +60,7 @@ data_file = Dataset(results_file_name, 'r')
 # ---------------------------------------------------------------------------- #
 # INITIAL PLOTTING
 # ---------------------------------------------------------------------------- #
+
 fig, axarray = plt.subplots(1, 2, figsize=(18, 6), sharex='all', sharey='all')
 time_idx = 0
 
@@ -64,6 +74,9 @@ for i, (ax, field_name, colour_scheme, field_label) in \
     field_data = extract_gusto_field(data_file, field_name, time_idx=time_idx)
     coords_X, coords_Y = extract_gusto_coords(data_file, field_name)
     time = data_file['time'][time_idx]
+
+    field_data, coords_X, coords_Y = \
+        reshape_gusto_data(field_data, coords_X, coords_Y)
 
     contours = tomplot_contours(field_data)
     cmap, lines = tomplot_cmap(contours, colour_scheme)
@@ -100,13 +113,16 @@ plt.close()
 # ---------------------------------------------------------------------------- #
 # FINAL PLOTTING
 # ---------------------------------------------------------------------------- #
-fig, axarray = plt.subplots(1, 2, figsize=(18, 6), sharex='all', sharey='all')
+xlims_zoom = [60., 95.]
+ylims_zoom = [0., 12.]
+
+fig, axarray = plt.subplots(2, 2, figsize=(18, 12), sharex='row', sharey='row')
 time_idx = -1
 
-for i, (ax, field_name, colour_scheme, field_label) in \
+for i, (ax, field_name, colour_scheme, field_label, contours) in \
         enumerate(zip(
             axarray.flatten(), final_field_names, final_colour_schemes,
-            final_field_labels
+            final_field_labels, final_contours
         )):
 
     # Data extraction ----------------------------------------------------------
@@ -114,7 +130,28 @@ for i, (ax, field_name, colour_scheme, field_label) in \
     coords_X, coords_Y = extract_gusto_coords(data_file, field_name)
     time = data_file['time'][time_idx]
 
-    contours = tomplot_contours(field_data)
+    # Filter data for panels that are zoomed in mountain region
+    if i in [2, 3]:
+        data_dict = {
+            'X': coords_X,
+            'Y': coords_Y,
+            'field': field_data
+        }
+        data_frame = pd.DataFrame(data_dict)
+
+        data_frame = data_frame[
+            (data_frame['X'] >= xlims_zoom[0])
+            & (data_frame['X'] <= xlims_zoom[1])
+            & (data_frame['Y'] >= ylims_zoom[0])
+            & (data_frame['Y'] <= ylims_zoom[1])
+        ]
+        field_data = data_frame['field'].values[:]
+        coords_X = data_frame['X'].values[:]
+        coords_Y = data_frame['Y'].values[:]
+
+    field_data, coords_X, coords_Y = \
+        reshape_gusto_data(field_data, coords_X, coords_Y)
+
     cmap, lines = tomplot_cmap(contours, colour_scheme, remove_contour=0.0)
 
     # Plot data ----------------------------------------------------------------
@@ -129,16 +166,29 @@ for i, (ax, field_name, colour_scheme, field_label) in \
     )
 
     # Labels -------------------------------------------------------------------
+    ax.set_xlabel(r'$x$ (km)', labelpad=-10)
+
+    if i in [0, 1]:
+        ax.set_xlim(xlims)
+        ax.set_ylim(ylims)
+        ax.set_xticks(xlims)
+        ax.set_xticklabels(xlims)
+    else:
+        ax.set_xlim(xlims_zoom)
+        ax.set_ylim(ylims_zoom)
+        ax.set_xticks(xlims_zoom)
+        ax.set_xticklabels(xlims_zoom)
+
     if i == 0:
         ax.set_ylabel(r'$z$ (km)', labelpad=-20)
-        ax.set_ylim(ylims)
         ax.set_yticks(ylims)
         ax.set_yticklabels(ylims)
 
-    ax.set_xlabel(r'$x$ (km)', labelpad=-10)
-    ax.set_xlim(xlims)
-    ax.set_xticks(xlims)
-    ax.set_xticklabels(xlims)
+    elif i == 2:
+        ax.set_ylabel(r'$z$ (km)', labelpad=-20)
+        ax.set_yticks(ylims_zoom)
+        ax.set_yticklabels(ylims_zoom)
+
 
 # Save figure ------------------------------------------------------------------
 fig.suptitle(f't = {time:.1f} s')

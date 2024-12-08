@@ -18,7 +18,7 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, SemiImplicitQuasiNewton, SSPRK3, DGUpwind,
-    TrapeziumRule, SUPGOptions, ZComponent, Perturbation, Divergence, Exner,
+    TrapeziumRule, SUPGOptions, ZComponent, Perturbation, Temperature, Exner,
     SpongeLayerParameters, CompressibleParameters, CompressibleSolver, logger,
     compressible_hydrostatic_balance, Recoverer, MinKernel, MaxKernel,
     HydrostaticCompressibleEulerEquations, CompressibleEulerEquations
@@ -63,7 +63,7 @@ def mountain_hydrostatic(
     exner_surf = 1.0         # maximum value of Exner pressure at surface
     eps = 0.8                # Damping factor for fixed point iteration
     max_inner_iters = 10     # maximum number of hydrostatic balance iterations
-    max_outer_iters = 20     # maximum number of isothermal iterations
+    max_outer_iters = 1     # maximum number of isothermal iterations
     tolerance = 1e-7         # tolerance for hydrostatic balance iteration
 
     # ------------------------------------------------------------------------ #
@@ -126,7 +126,8 @@ def mountain_hydrostatic(
         checkpoint=True, chkptfreq=dumpfreq
     )
     diagnostic_fields = [
-        ZComponent('u'), Perturbation('theta'), Exner(parameters), Divergence()
+        ZComponent('u'), Perturbation('theta'), Exner(parameters),
+        Temperature(eqns)
     ]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -274,14 +275,14 @@ def mountain_hydrostatic(
 
         logger.info(f'Final max bottom Exner value of {max_bottom_value}')
 
-        # Break if isothermal atmosphere is satisfied
-        exner_recoverer.project()
-        T_test.interpolate(T_expr)
-        min_T = min_kernel.apply(T_test)
-        max_T = max_kernel.apply(T_test)
-        logger.info(f'Temperature has min {min_T} K and max {max_T} K')
-        if errornorm(T_test, T_true) / norm(T_true) < tolerance:
-            break
+        # # Break if isothermal atmosphere is satisfied
+        # exner_recoverer.project()
+        # T_test.interpolate(T_expr)
+        # min_T = min_kernel.apply(T_test)
+        # max_T = max_kernel.apply(T_test)
+        # logger.info(f'Temperature has min {min_T} K and max {max_T} K')
+        # if errornorm(T_test, T_true) / norm(T_true) < tolerance:
+        #     break
 
 
     # Perform a final solve to obtain hydrostatically balanced rho

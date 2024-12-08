@@ -24,8 +24,8 @@ from gusto import (
 )
 
 mountain_nonhydrostatic_defaults = {
-    'ncolumns': 180,
-    'nlayers': 70,
+    'ncolumns': 90,
+    'nlayers': 35,
     'dt': 5.0,
     'tmax': 9000.,
     'dumpfreq': 450,
@@ -120,8 +120,7 @@ def mountain_nonhydrostatic(
         dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )
     diagnostic_fields = [
-        Exner(parameters), ZComponent('u'), Perturbation('theta'),
-        Perturbation('rho')
+        Exner(parameters), ZComponent('u'), Perturbation('theta')
     ]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -291,6 +290,16 @@ if __name__ == "__main__":
         help="The name of the directory to write to.",
         type=str,
         default=mountain_nonhydrostatic_defaults['dirname']
+    )
+    parser.add_argument(
+        '--hydrostatic',
+        help=(
+            "Whether to use the hydrostatic switch to emulate the "
+            + "hydrostatic equations. Otherwise use the full non-hydrostatic"
+            + "equations."
+        ),
+        action="store_true",
+        default=mountain_nonhydrostatic_defaults['hydrostatic']
     )
     args, unknown = parser.parse_known_args()
 

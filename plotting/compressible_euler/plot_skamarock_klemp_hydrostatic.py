@@ -3,7 +3,7 @@ Plots the hydrostatic Skamarock-Klemp gravity wave in a vertical slice.
 
 This plots the initial conditions @ t = 0 s, with
 (a) theta perturbation, (b) theta
-and the final state @ t = 3600 s, with
+and the final state @ t = 60,000 s, with
 (a) theta perturbation,
 (b) a 1D slice through the wave
 """
@@ -11,20 +11,21 @@ from os.path import abspath, dirname
 import matplotlib.pyplot as plt
 import numpy as np
 from netCDF4 import Dataset
+import pandas as pd
 from tomplot import (
     set_tomplot_style, tomplot_cmap, plot_contoured_field,
     add_colorbar_ax, tomplot_field_title, extract_gusto_vertical_slice,
-    add_colorbar_fig
+    add_colorbar_fig, reshape_gusto_data
 )
 
-test = 'skamarock_klemp_hydrostatic_tb'
+test = 'skamarock_klemp_hydrostatic'
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
-results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_output.nc'
+results_file_name = f'{abspath(dirname(__file__))}/../../../results/{test}/field_output.nc'
 plot_stem = f'{abspath(dirname(__file__))}/../../figures/compressible_euler/{test}'
 
 # ---------------------------------------------------------------------------- #
@@ -49,7 +50,6 @@ final_contour_to_remove = 0.0
 # General options
 # ---------------------------------------------------------------------------- #
 contour_method = 'tricontour'
-xlims = [0, 6000.0]
 ylims = [0, 10.0]
 slice_along = 'y'
 slice_at = 2.113249
@@ -61,6 +61,7 @@ data_file = Dataset(results_file_name, 'r')
 # ---------------------------------------------------------------------------- #
 # INITIAL PLOTTING
 # ---------------------------------------------------------------------------- #
+xlims = [0, 6000.0]
 fig, axarray = plt.subplots(1, 2, figsize=(12, 6), sharex='all', sharey='all')
 time_idx = 0
 
@@ -112,17 +113,38 @@ plt.close()
 # ---------------------------------------------------------------------------- #
 # FINAL PLOTTING
 # ---------------------------------------------------------------------------- #
-fig, ax = plt.subplots(1, 1, figsize=(8, 5), sharex='all')
+x_offset = -60000.0*20/1000.0
+xlims = [-x_offset, 6000.0-x_offset]
+
+fig, axarray = plt.subplots(2, 1, figsize=(8, 8), sharex='all')
 time_idx = -1
 
 # Data extraction ----------------------------------------------------------
 field_data, coords_X, _, coords_Z = \
     extract_gusto_vertical_slice(
         data_file, final_field_name, time_idx=time_idx,
-        slice_along=slice_along, slice_at=slice_at)
+        slice_along=slice_along, slice_at=slice_at
+    )
 time = data_file['time'][time_idx]
 
+# Wave has wrapped around periodic boundary, so shift the coordinates
+coords_X = np.where(coords_X < xlims[0], coords_X + 6000.0, coords_X)
+
+# Sort data given the change in coordinates
+data_dict = {
+    'X': coords_X.flatten(),
+    'Z': coords_Z.flatten(),
+    'field': field_data.flatten()
+}
+data_frame = pd.DataFrame(data_dict)
+data_frame.sort_values(by=['X', 'Z'], inplace=True)
+coords_X = data_frame['X'].values[:]
+coords_Z = data_frame['Z'].values[:]
+field_data = data_frame['field'].values[:]
+
 # Plot 2D data -----------------------------------------------------------------
+ax = axarray[0]
+
 cmap, lines = tomplot_cmap(
     final_contours, final_colour_scheme, remove_contour=final_contour_to_remove
 )
@@ -142,6 +164,28 @@ ax.set_ylabel(r'$z$ (km)', labelpad=-20)
 ax.set_ylim(ylims)
 ax.set_yticks(ylims)
 ax.set_yticklabels(ylims)
+
+# Plot 1D data -----------------------------------------------------------------
+ax = axarray[1]
+
+field_data, coords_X, coords_Y = reshape_gusto_data(field_data, coords_X, coords_Z)
+
+# Determine midpoint index
+mid_idx = np.floor_divide(np.shape(field_data)[1], 2)
+slice_height = coords_Y[0, mid_idx]
+
+ax.plot(coords_X[:, mid_idx], field_data[:, mid_idx], color='black')
+
+tomplot_field_title(
+    ax, r'$z$' + f' = {slice_height:.1f} km'
+)
+
+theta_lims = [np.min(final_contours), np.max(final_contours)]
+
+ax.set_ylabel(final_field_label, labelpad=-20)
+ax.set_ylim(theta_lims)
+ax.set_yticks(theta_lims)
+ax.set_yticklabels(theta_lims)
 
 ax.set_xlabel(r'$x$ (km)', labelpad=-10)
 ax.set_xlim(xlims)
