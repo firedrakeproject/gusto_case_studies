@@ -79,7 +79,7 @@ for i, (ax, field_name, colour_scheme, field_label) in \
         reshape_gusto_data(field_data, coords_X, coords_Y)
 
     if field_name == 'Temperature':
-        contours = np.linspace(249.99, 250.01, 4)
+        contours = np.linspace(250.0, 266.0, 9)
     else:
         contours = tomplot_contours(field_data)
     cmap, lines = tomplot_cmap(contours, colour_scheme)
