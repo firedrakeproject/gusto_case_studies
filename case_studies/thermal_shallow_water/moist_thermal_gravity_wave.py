@@ -12,7 +12,8 @@ from gusto import (
     ShallowWaterEquations, lonlatr_from_xyz, GeneralIcosahedralSphereMesh,
     RungeKuttaFormulation, SSPRK3, ThermalSWSolver, MeridionalComponent,
     SemiImplicitQuasiNewton, ForwardEuler, WaterVapour, CloudWater,
-    xyz_vector_from_lonlatr, SWSaturationAdjustment, ZonalComponent
+    xyz_vector_from_lonlatr, SWSaturationAdjustment, ZonalComponent,
+    SubcyclingOptions
 )
 
 moist_thermal_gw_defaults = {
@@ -103,15 +104,16 @@ def moist_thermal_gw(
     # Timestepper
     # ------------------------------------------------------------------------ #
 
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
     transported_fields = [
-        SSPRK3(domain, "u", subcycle_by_courant=0.25),
+        SSPRK3(domain, "u", subcycling_options=subcycling_opts),
         SSPRK3(
-            domain, "D", subcycle_by_courant=0.25,
+            domain, "D", subcycling_options=subcycling_opts,
             rk_formulation=RungeKuttaFormulation.linear
         ),
-        SSPRK3(domain, "b", subcycle_by_courant=0.25),
-        SSPRK3(domain, "water_vapour", subcycle_by_courant=0.25),
-        SSPRK3(domain, "cloud_water", subcycle_by_courant=0.25)
+        SSPRK3(domain, "b", subcycling_options=subcycling_opts),
+        SSPRK3(domain, "water_vapour", subcycling_options=subcycling_opts),
+        SSPRK3(domain, "cloud_water", subcycling_options=subcycling_opts)
     ]
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,

@@ -10,7 +10,7 @@ from firedrake import (
     SpatialCoordinate, as_vector, pi, sqrt, min_value, cos, sin, Function
 )
 from gusto import (
-    Domain, IO, OutputParameters, DGUpwind,
+    Domain, IO, OutputParameters, DGUpwind, SubcyclingOptions,
     ShallowWaterParameters, ShallowWaterEquations, Sum,
     lonlatr_from_xyz, GeneralIcosahedralSphereMesh, RelativeVorticity,
     ZonalComponent, MeridionalComponent, RungeKuttaFormulation, SSPRK3,
@@ -97,13 +97,14 @@ def thermal_williamson_5(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
     transported_fields = [
-        SSPRK3(domain, "u", subcycle_by_courant=0.25),
+        SSPRK3(domain, "u", subcycling_options=subcycling_opts),
         SSPRK3(
-            domain, "D", subcycle_by_courant=0.25,
+            domain, "D", subcycling_options=subcycling_opts,
             rk_formulation=RungeKuttaFormulation.linear
         ),
-        SSPRK3(domain, "b", subcycle_by_courant=0.25),
+        SSPRK3(domain, "b", subcycling_options=subcycling_opts),
     ]
     transport_methods = [
         DGUpwind(eqns, "u"),
