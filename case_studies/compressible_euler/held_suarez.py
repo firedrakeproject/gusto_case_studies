@@ -34,7 +34,7 @@ held_suarez_defaults = {
 }
 
 
-def Held_Suarez(
+def held_suarez(
         ncell_per_edge=held_suarez_defaults['ncell_per_edge'],
         nlayers=held_suarez_defaults['nlayers'],
         dt=held_suarez_defaults['dt'],
@@ -293,4 +293,4 @@ if __name__ == "__main__":
     )
     args, unknown = parser.parse_known_args()
 
-    Held_Suarez(**vars(args))
+    held_suarez(**vars(args))
