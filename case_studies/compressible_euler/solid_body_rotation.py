@@ -90,7 +90,7 @@ def solid_body_sphere(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
 
-    diagnostic_fields = [Pressure(eqn), Temperature('eqn'), ZonalComponent('u')]
+    diagnostic_fields = [Pressure(eqn), Temperature(eqn), ZonalComponent('u')]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport options -- use embedded DG for theta transport
@@ -141,8 +141,9 @@ def solid_body_sphere(
 
     # expressions for variables from paper
     s = r * cos(lat)
-    Q_expr = (s / a)**2 * (u0**2 / (2 * Rd * T0)) + (s / a)**2 * (2 * omega * a * u0) / (2 *Rd *T0)
 
+    Q_expr = (s / a)**2 * (u0**2  + 2 * omega * a * u0) / (2 * Rd * T0)
+ 
     # solving fields as per the staniforth paper
     q_expr = Q_expr + ((g * a**2) / (Rd * T0)) * (1/r - 1/a)
     p_expr = p0 * exp(q_expr)
