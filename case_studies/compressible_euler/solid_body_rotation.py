@@ -129,7 +129,6 @@ def solid_body_sphere(
     p0 = Constant(100000)
     T0 = 280.  # in K
 
-
     vel0 = stepper.fields("u")
     rho0 = stepper.fields("rho")
     theta0 = stepper.fields("theta")
@@ -142,8 +141,8 @@ def solid_body_sphere(
     # expressions for variables from paper
     s = r * cos(lat)
 
-    Q_expr = (s / a)**2 * (u0**2  + 2 * omega * a * u0) / (2 * Rd * T0)
- 
+    Q_expr = (s / a)**2 * (u0**2 + 2 * omega * a * u0) / (2 * Rd * T0)
+
     # solving fields as per the staniforth paper
     q_expr = Q_expr + ((g * a**2) / (Rd * T0)) * (1/r - 1/a)
     p_expr = p0 * exp(q_expr)
@@ -202,7 +201,6 @@ def solid_body_sphere(
 # ---------------------------------------------------------------------------- #
 # MAIN
 # ---------------------------------------------------------------------------- #
-
 if __name__ == "__main__":
 
     parser = ArgumentParser(
