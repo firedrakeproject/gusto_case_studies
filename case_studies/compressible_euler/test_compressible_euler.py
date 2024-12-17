@@ -3,6 +3,7 @@ from moist_baroclinic_channel import moist_baroclinic_channel
 from moist_bryan_fritsch import moist_bryan_fritsch
 from mountain_nonhydrostatic import mountain_nonhydrostatic
 from robert_bubble import robert_bubble
+from solid_body_rotation import solid_body_sphere
 
 
 def test_dry_baroclinic_sphere():
@@ -58,4 +59,15 @@ def test_robert_bubble():
         tmax=2.0,
         dumpfreq=2,
         dirname='pytest_robert_bubble'
+    )
+
+
+def test_solid_body_sphere():
+    solid_body_sphere(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=1800,
+        dumpfreq=2,
+        dirname='pytest_solid_body_sphere'
     )
