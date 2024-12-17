@@ -3,7 +3,9 @@ The 1 metre high mountain test case from Melvin et al, 2010:
 ``An inherently mass-conserving iterative semi-implicit semi-Lagrangian
 discretization of the non-hydrostatic vertical-slice equations.'', QJRMS.
 
-This test describes a wave over a mountain in a non-hydrostatic atmosphere.
+This test describes a wave over a 1m high mountain. The domain is smaller than
+that in the "non-hydrostatic mountain" case, so the solutions between the
+hydrostatic and non-hydrostatic equations should be different.
 
 The setup used here uses the order 1 finite elements.
 """
@@ -15,19 +17,20 @@ from firedrake import (
 )
 from gusto import (
     Domain, CompressibleParameters, CompressibleSolver, logger,
-    CompressibleEulerEquations, OutputParameters, IO, SSPRK3,
-    DGUpwind, SemiImplicitQuasiNewton, compressible_hydrostatic_balance,
-    SpongeLayerParameters, Exner, ZComponent, Perturbation,
-    SUPGOptions, TrapeziumRule, MaxKernel, MinKernel
+    CompressibleEulerEquations, HydrostaticCompressibleEulerEquations,
+    OutputParameters, IO, SSPRK3, DGUpwind, SemiImplicitQuasiNewton,
+    compressible_hydrostatic_balance, SpongeLayerParameters, Exner, ZComponent,
+    Perturbation, SUPGOptions, TrapeziumRule, MaxKernel, MinKernel
 )
 
 mountain_nonhydrostatic_defaults = {
-    'ncolumns': 180,
-    'nlayers': 70,
+    'ncolumns': 90,
+    'nlayers': 35,
     'dt': 5.0,
     'tmax': 9000.,
     'dumpfreq': 450,
-    'dirname': 'mountain_nonhydrostatic'
+    'dirname': 'mountain_nonhydrostatic',
+    'hydrostatic': False
 }
 
 
@@ -37,7 +40,8 @@ def mountain_nonhydrostatic(
         dt=mountain_nonhydrostatic_defaults['dt'],
         tmax=mountain_nonhydrostatic_defaults['tmax'],
         dumpfreq=mountain_nonhydrostatic_defaults['dumpfreq'],
-        dirname=mountain_nonhydrostatic_defaults['dirname']
+        dirname=mountain_nonhydrostatic_defaults['dirname'],
+        hydrostatic=mountain_nonhydrostatic_defaults['hydrostatic']
 ):
 
     # ------------------------------------------------------------------------ #
@@ -96,17 +100,27 @@ def mountain_nonhydrostatic(
     sponge = SpongeLayerParameters(
         H=domain_height, z_level=domain_height-sponge_depth, mubar=sponge_mu/dt
     )
-    eqns = CompressibleEulerEquations(
-        domain, parameters, sponge_options=sponge, u_transport_option=u_eqn_type
-    )
+    if hydrostatic:
+        eqns = HydrostaticCompressibleEulerEquations(
+            domain, parameters, sponge_options=sponge,
+            u_transport_option=u_eqn_type
+        )
+    else:
+        eqns = CompressibleEulerEquations(
+            domain, parameters, sponge_options=sponge,
+            u_transport_option=u_eqn_type
+        )
 
     # I/O
+    # Adjust default directory name
+    if hydrostatic and dirname == mountain_nonhydrostatic_defaults['dirname']:
+        dirname = f'hyd_switch_{dirname}'
+
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )
     diagnostic_fields = [
-        Exner(parameters), ZComponent('u'), Perturbation('theta'),
-        Perturbation('rho')
+        Exner(parameters), ZComponent('u'), Perturbation('theta')
     ]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -276,6 +290,16 @@ if __name__ == "__main__":
         help="The name of the directory to write to.",
         type=str,
         default=mountain_nonhydrostatic_defaults['dirname']
+    )
+    parser.add_argument(
+        '--hydrostatic',
+        help=(
+            "Whether to use the hydrostatic switch to emulate the "
+            + "hydrostatic equations. Otherwise use the full non-hydrostatic"
+            + "equations."
+        ),
+        action="store_true",
+        default=mountain_nonhydrostatic_defaults['hydrostatic']
     )
     args, unknown = parser.parse_known_args()
 
