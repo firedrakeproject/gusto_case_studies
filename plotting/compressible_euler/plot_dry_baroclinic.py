@@ -16,9 +16,9 @@ from tomplot import (tomplot_contours, tomplot_cmap,
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 # When copying this example these should not be relative to this file
-results_dir = '/data/home/dw603/firedrake-08_05_24/src/gusto/PhD/results/baroclinic_wave_order_1_1_with_vort'  # This needs to point to a data file
+results_dir = '/data/home/dw603/firedrake-08_05_24/src/gusto/gusto_case_studies/case_studies/compressible_euler/results/dry_baroclinic_sphere'  # This needs to point to a data file
 results_file_name = f'{results_dir}/field_output.nc'
-plot_dir = f'{results_dir}/plots'
+plot_dir = f'plot_tests'
 plot_stem = f'{plot_dir}/output_testing'
 
 # ---------------------------------------------------------------------------- #
@@ -28,7 +28,7 @@ plot_stem = f'{plot_dir}/output_testing'
 initial_field_names = ['Temperature', 'u_zonal']
 initial_titles = ['Temperature', 'Zonal wind']
 initial_slices = ['lon', 'lon']
-intial_slice_ats = [0, 0]
+initial_slice_ats = [0, 0]
 initial_field_labels = [r'$T \ / $K', r'$u \ / $m/s']
 
 ## ----------------------------------------------------------------------------#
@@ -67,11 +67,11 @@ ylims = domain_limit['Y']
 data_file = Dataset(results_file_name, 'r')
 for time_idx in time_idxs:
     if time_idx == 0:
-        fig, axarray = plt.subplots(1, 2, figsize=(8, 16))
+        fig, axarray = plt.subplots(1, 2, figsize=(16, 16))
         # Loop through subplots
         for i, (ax, field_name, field_label, colour_scheme, slice_along, slice_at, title) in \
             enumerate(zip(axarray.flatten(), initial_field_names, initial_field_labels, colour_schemes,
-                        initial_slices,  initial_slices, initial_titles)):
+                        initial_slices,  initial_slice_ats, initial_titles)):
             # ------------------------------------------------------------------------ #
             # Data extraction
             # ------------------------------------------------------------------------ #
@@ -89,13 +89,10 @@ for time_idx in time_idxs:
             # ------------------------------------------------------------------------ #
             # Plot data
             # ------------------------------------------------------------------------ #
-            contours = tomplot_contours(field_data)
-            if field_name == 'Temperature':
-                contours = np.arange(220, 320, 10)
-
-            cmap, lines = tomplot_cmap(contours, colour_scheme)
+            auto_contours = tomplot_contours(field_data)
+            cmap, lines = tomplot_cmap(auto_contours, colour_scheme)
             cf, _ = plot_contoured_field(ax, coords_hori, coords_Z, field_data,
-                                        contour_method, contours, cmap=cmap,
+                                        contour_method, auto_contours, cmap=cmap,
                                         line_contours=lines)
             add_colorbar_ax(ax, cf, field_label, location='bottom', cbar_labelpad=-10)
             # Don't add ylabels unless left-most subplots
@@ -143,13 +140,10 @@ for time_idx in time_idxs:
             # ------------------------------------------------------------------------ #
             # Plot data
             # ------------------------------------------------------------------------ #
-            contours = tomplot_contours(field_data)
-            if field_name == 'Temperature':
-                contours = np.arange(220, 320, 10)
 
-            cmap, lines = tomplot_cmap(contours, colour_scheme)
+            cmap, lines = tomplot_cmap(contour, colour_scheme)
             cf, _ = plot_contoured_field(ax, coords_hori, coords_Z, field_data,
-                                        contour_method, contours, cmap=cmap,
+                                        contour_method, contour, cmap=cmap,
                                         line_contours=lines)
             add_colorbar_ax(ax, cf, field_label, location='bottom', cbar_labelpad=-10)
             # Don't add ylabels unless left-most subplots
