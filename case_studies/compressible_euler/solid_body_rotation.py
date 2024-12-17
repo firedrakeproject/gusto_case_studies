@@ -128,14 +128,14 @@ def solid_body_sphere(
     g = params.g
     p0 = Constant(100000)
     T0 = 280.  # in K
-    u0 = 40.
 
-    u0 = stepper.fields("u")
+
+    vel0 = stepper.fields("u")
     rho0 = stepper.fields("rho")
     theta0 = stepper.fields("theta")
 
     # spaces
-    Vu = u0.function_space()
+    Vu = vel0.function_space()
     Vr = rho0.function_space()
     Vt = theta0.function_space()
 
@@ -167,8 +167,8 @@ def solid_body_sphere(
     test_u = TestFunction(Vu)
     dx_reduced = dx(degree=4)
     u_field = zonal_u*e_lon + merid_u*e_lat + radial_u*e_r
-    u_proj_eqn = inner(test_u, u0 - u_field)*dx_reduced
-    u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
+    u_proj_eqn = inner(test_u, vel0 - u_field)*dx_reduced
+    u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, vel0)
     u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
     u_proj_solver.solve()
 
