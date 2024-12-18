@@ -30,7 +30,8 @@ initial_titles = ['Temperature', 'Zonal wind']
 initial_slices = ['lon', 'lon']
 initial_slice_ats = [0, 0]
 initial_field_labels = [r'$T \ / $K', r'$u \ / $m/s']
-
+initial_xlims = (-90, 90)
+initial_ylims = (0, 30000)
 # ----------------------------------------------------------------------------#
 # Main plot details
 # ---------------------------------------------------------------------------- #
@@ -44,11 +45,11 @@ xlims = domain_limit['X']
 ylims = domain_limit['Y']
 colour_schemes = ['RdPu', 'RdBu_r']
 temperature_contour = np.arange(220, 320, 10)
-pressure_contour = np.arange(955, 1025, 5)
+pressure_contour = np.arange(955, 1025, 5)*100
 contours = [temperature_contour, pressure_contour]
 
 # Things that are the same for all subplots
-time_idxs = [0, 16, -1]
+time_idxs = [0, 16, 20]
 contour_method = 'tricontour'
 
 # 1D grids for vertical regridding
@@ -56,10 +57,7 @@ coords_lon_1d = np.linspace(-180, 180, 50)
 coords_lat_1d = np.linspace(-90, 90, 50)
 # Dictionary to hold plotting grids -- keys are "slice_along" values
 plotting_grids = {'lat': coords_lon_1d, 'lon': coords_lat_1d}
-# Level for horizontal slices
 
-xlims = domain_limit['X']
-ylims = domain_limit['Y']
 # ---------------------------------------------------------------------------- #
 # Things that are likely the same for all plots
 # ---------------------------------------------------------------------------- #
@@ -67,7 +65,7 @@ ylims = domain_limit['Y']
 data_file = Dataset(results_file_name, 'r')
 for time_idx in time_idxs:
     if time_idx == 0:
-        fig, axarray = plt.subplots(1, 2, figsize=(16, 16))
+        fig, axarray = plt.subplots(1, 2, figsize=(16, 8))
         # Loop through subplots
         for i, (ax, field_name, field_label, colour_scheme, slice_along, slice_at, title) in \
             enumerate(zip(axarray.flatten(), initial_field_names, initial_field_labels, colour_schemes,
@@ -94,13 +92,20 @@ for time_idx in time_idxs:
             cf, _ = plot_contoured_field(ax, coords_hori, coords_Z, field_data,
                                          contour_method, auto_contours, cmap=cmap,
                                          line_contours=lines)
-            add_colorbar_ax(ax, cf, field_label, location='bottom', cbar_labelpad=-10)
+            add_colorbar_ax(ax, cf, field_label, location='bottom', pad=0.05, cbar_labelpad=-5)
             # Don't add ylabels unless left-most subplots
             ylabel = True if i % 3 == 0 else None
             ylabelpad = -30 if i > 2 else -10
 
             tomplot_field_title(ax, title, minmax=True, field_data=field_data)
-        fig.subplots_adjust(wspace=0.3, hspace=0.3)
+            ax.set_xlim(initial_xlims)
+            ax.set_xticks(initial_xlims)
+            ax.set_xticklabels(initial_xlims)
+            ax.set_xlabel('Lattitude', labelpad=-10)
+            ax.set_ylim(initial_ylims)
+            ax.set_yticks(initial_ylims)
+            ax.set_yticklabels(initial_ylims)
+            ax.set_ylabel('Height (m)', labelpad=-20)
         fig.suptitle('Baroclinic Wave initial fields')
         # ---------------------------------------------------------------------------- #
         # Save figure
@@ -153,9 +158,11 @@ for time_idx in time_idxs:
             ax.set_xlim(xlims)
             ax.set_xticks(xlims)
             ax.set_xticklabels(xlims)
+            ax.set_ylabel('Lattitude', labelpad=-20)
             ax.set_ylim(ylims)
             ax.set_yticks(ylims)
             ax.set_yticklabels(ylims)
+            ax.set_xlabel('Longtitude', labelpad = -10)
 
         # These subplots tend to be quite clustered together, so move them apart a bit
         fig.subplots_adjust(wspace=0.3, hspace=0.3)
