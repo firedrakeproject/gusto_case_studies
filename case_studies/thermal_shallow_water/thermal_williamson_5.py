@@ -11,7 +11,7 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, SubcyclingOptions,
-    ShallowWaterParameters, ShallowWaterEquations, Sum,
+    ShallowWaterParameters, ThermalShallowWaterEquations, Sum,
     lonlatr_from_xyz, GeneralIcosahedralSphereMesh, RelativeVorticity,
     ZonalComponent, MeridionalComponent, RungeKuttaFormulation, SSPRK3,
     SemiImplicitQuasiNewton, ThermalSWSolver
@@ -81,8 +81,8 @@ def thermal_williamson_5(
     tpexpr = mountain_height * (1 - r/R0)
 
     # Equation
-    eqns = ShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, bexpr=tpexpr, thermal=True,
+    eqns = ThermalShallowWaterEquations(
+        domain, parameters, fexpr=fexpr, topog_expr=tpexpr, thermal=True,
         u_transport_option=u_eqn_type
     )
 
