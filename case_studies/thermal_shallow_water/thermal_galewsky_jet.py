@@ -11,7 +11,7 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, xyz_vector_from_lonlatr,
-    ShallowWaterParameters, ShallowWaterEquations, SubcyclingOptions,
+    ShallowWaterParameters, ThermalShallowWaterEquations, SubcyclingOptions,
     lonlatr_from_xyz, GeneralCubedSphereMesh, RelativeVorticity,
     ZonalComponent, MeridionalComponent, RungeKuttaFormulation, SSPRK3,
     SemiImplicitQuasiNewton, ThermalSWSolver, NumericalIntegral
@@ -74,9 +74,8 @@ def thermal_galewsky(
     parameters = ShallowWaterParameters(H=mean_depth, g=g)
     Omega = parameters.Omega
     fexpr = 2*Omega*xyz[2]/radius
-    eqns = ShallowWaterEquations(
-        domain, parameters, u_transport_option=u_eqn_type, fexpr=fexpr,
-        thermal=True
+    eqns = ThermalShallowWaterEquations(
+        domain, parameters, u_transport_option=u_eqn_type, fexpr=fexpr
     )
 
     # I/O

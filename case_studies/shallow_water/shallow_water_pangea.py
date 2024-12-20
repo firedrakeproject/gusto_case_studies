@@ -77,7 +77,7 @@ def shallow_water_pangea(
     fexpr = 2*Omega*xyz[2]/radius
     bexpr = b_field
     eqns = ShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, bexpr=bexpr,
+        domain, parameters, fexpr=fexpr, topog_expr=bexpr,
         u_transport_option=u_eqn_type
     )
 

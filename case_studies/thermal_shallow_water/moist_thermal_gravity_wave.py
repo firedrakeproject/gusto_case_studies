@@ -9,11 +9,11 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, ShallowWaterParameters,
-    ShallowWaterEquations, lonlatr_from_xyz, GeneralIcosahedralSphereMesh,
+    ThermalShallowWaterEquations, lonlatr_from_xyz, SubcyclingOptions,
     RungeKuttaFormulation, SSPRK3, ThermalSWSolver, MeridionalComponent,
     SemiImplicitQuasiNewton, ForwardEuler, WaterVapour, CloudWater,
     xyz_vector_from_lonlatr, SWSaturationAdjustment, ZonalComponent,
-    SubcyclingOptions
+    GeneralIcosahedralSphereMesh
 )
 
 moist_thermal_gw_defaults = {
@@ -66,8 +66,8 @@ def moist_thermal_gw(
 
     # Equation
     tracers = [WaterVapour(space='DG'), CloudWater(space='DG')]
-    eqns = ShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, thermal=True, active_tracers=tracers
+    eqns = ThermalShallowWaterEquations(
+        domain, parameters, fexpr=fexpr, active_tracers=tracers
     )
 
     # IO
