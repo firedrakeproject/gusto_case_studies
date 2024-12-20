@@ -21,7 +21,7 @@ from gusto import (
     Perturbation, thermodynamics, CompressibleParameters,
     CompressibleEulerEquations, RungeKuttaFormulation, CompressibleSolver,
     WaterVapour, CloudWater, Theta_e, Recoverer, saturated_hydrostatic_balance,
-    EmbeddedDGOptions, ForwardEuler, SaturationAdjustment
+    EmbeddedDGOptions, ForwardEuler, SaturationAdjustment, SubcyclingOptions
 )
 
 moist_skamarock_klemp_defaults = {
@@ -94,24 +94,27 @@ def moist_skamarock_klemp(
         mesh, BrokenElement(domain.spaces("theta").ufl_element())
     )
     embedded_dg = EmbeddedDGOptions(embedding_space=Vt_brok)
-
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
     transported_fields = [
         SSPRK3(
-            domain, "u", subcycle_by_courant=0.25,
+            domain, "u", subcycling_options=subcycling_opts,
             rk_formulation=RungeKuttaFormulation.predictor
         ),
         SSPRK3(
-            domain, "rho", subcycle_by_courant=0.25,
+            domain, "rho", subcycling_options=subcycling_opts,
             rk_formulation=RungeKuttaFormulation.linear
         ),
-        SSPRK3(domain, "theta", subcycle_by_courant=0.25, options=embedded_dg),
+        SSPRK3(
+            domain, "theta",
+            subcycling_options=subcycling_opts, options=embedded_dg
+        ),
         SSPRK3(
             domain, "water_vapour",
-            subcycle_by_courant=0.25, options=embedded_dg
+            subcycling_options=subcycling_opts, options=embedded_dg
         ),
         SSPRK3(
             domain, "cloud_water",
-            subcycle_by_courant=0.25, options=embedded_dg
+            subcycling_options=subcycling_opts, options=embedded_dg
         )
     ]
     transport_methods = [

@@ -20,7 +20,8 @@ from gusto import (
     CompressibleEulerEquations, HydrostaticCompressibleEulerEquations,
     OutputParameters, IO, SSPRK3, DGUpwind, SemiImplicitQuasiNewton,
     compressible_hydrostatic_balance, SpongeLayerParameters, Exner, ZComponent,
-    Perturbation, SUPGOptions, TrapeziumRule, MaxKernel, MinKernel
+    Perturbation, SUPGOptions, TrapeziumRule, MaxKernel, MinKernel,
+    hydrostatic_parameters
 )
 
 mountain_nonhydrostatic_defaults = {
@@ -58,7 +59,7 @@ def mountain_nonhydrostatic(
     sponge_depth = 10000.0   # depth of sponge layer, in m
     g = 9.80665              # acceleration due to gravity, in m/s^2
     cp = 1004.               # specific heat capacity at constant pressure
-    sponge_mu = 0.15         # parameter for strength of sponge layer, in J/kg/K
+    mu_dt = 0.15             # parameter for strength of sponge layer, no units
     exner_surf = 1.0         # maximum value of Exner pressure at surface
     max_iterations = 10      # maximum number of hydrostatic balance iterations
     tolerance = 1e-7         # tolerance for hydrostatic balance iteration
@@ -66,8 +67,10 @@ def mountain_nonhydrostatic(
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
+
     element_order = 1
     u_eqn_type = 'vector_invariant_form'
+    alpha = 0.5
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -98,7 +101,7 @@ def mountain_nonhydrostatic(
     # Equation
     parameters = CompressibleParameters(g=g, cp=cp)
     sponge = SpongeLayerParameters(
-        H=domain_height, z_level=domain_height-sponge_depth, mubar=sponge_mu/dt
+        H=domain_height, z_level=domain_height-sponge_depth, mubar=mu_dt/dt
     )
     if hydrostatic:
         eqns = HydrostaticCompressibleEulerEquations(
@@ -138,12 +141,18 @@ def mountain_nonhydrostatic(
     ]
 
     # Linear solver
-    linear_solver = CompressibleSolver(eqns)
+    if hydrostatic:
+        linear_solver = CompressibleSolver(
+            eqns, alpha, solver_parameters=hydrostatic_parameters,
+            overwrite_solver_parameters=True
+        )
+    else:
+        linear_solver = CompressibleSolver(eqns, alpha)
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver
+        linear_solver=linear_solver, alpha=alpha
     )
 
     # ------------------------------------------------------------------------ #

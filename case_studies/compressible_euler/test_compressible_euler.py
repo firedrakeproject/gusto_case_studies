@@ -6,6 +6,7 @@ from mountain_hydrostatic import mountain_hydrostatic
 from mountain_nonhydrostatic import mountain_nonhydrostatic
 from robert_bubble import robert_bubble
 from skamarock_klemp_hydrostatic import skamarock_klemp_hydrostatic
+import pytest
 
 
 def test_dry_baroclinic_sphere():
@@ -53,7 +54,7 @@ def test_moist_skamarock_klemp():
     )
 
 
-def test_mountain_nonhydrostatic():
+def test_mountain_hydrostatic():
     mountain_hydrostatic(
         ncolumns=20,
         nlayers=10,
@@ -64,9 +65,10 @@ def test_mountain_nonhydrostatic():
         hydrostatic=False
     )
 
+
 # Hydrostatic switch not currently working
 @pytest.mark.xfail
-def test_hyd_switch_mountain_nonhydrostatic():
+def test_hyd_switch_mountain_hydrostatic():
     mountain_hydrostatic(
         ncolumns=20,
         nlayers=10,
@@ -88,6 +90,7 @@ def test_mountain_nonhydrostatic():
         dirname='pytest_mountain_nonhydrostatic',
         hydrostatic=False
     )
+
 
 # Hydrostatic switch not currently working
 @pytest.mark.xfail

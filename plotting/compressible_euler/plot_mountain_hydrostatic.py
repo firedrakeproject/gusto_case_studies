@@ -35,8 +35,8 @@ final_field_labels = [
     r'$w$ (m s$^{-1}$)', r'$\Delta\theta$ (K)'
 ]
 final_contours = [
-    np.linspace(-0.2, 0.2, 11), np.linspace(-0.5, 0.5, 21),
-    np.linspace(-0.2, 0.2, 11), np.linspace(-0.05, 0.05, 21)
+    np.linspace(-0.012, 0.012, 13), np.linspace(-0.14, 0.14, 15),
+    np.linspace(-0.004, 0.004, 21), np.linspace(-0.02, 0.02, 21)
 ]
 
 # ---------------------------------------------------------------------------- #
@@ -51,7 +51,7 @@ initial_field_labels = [r'$\Pi$', r'$\theta$ (K)', r'$T$ (K)']
 # ---------------------------------------------------------------------------- #
 contour_method = 'contour'  # Need to use this method to show mountains!
 xlims = [0., 240.]
-ylims = [0., 35.]
+ylims = [0., 50.]
 
 # Things that are likely the same for all plots --------------------------------
 set_tomplot_style()

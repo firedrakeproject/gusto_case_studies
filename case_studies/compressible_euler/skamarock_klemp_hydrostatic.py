@@ -22,7 +22,7 @@ from gusto import (
     Domain, IO, OutputParameters, SemiImplicitQuasiNewton, SSPRK3, DGUpwind,
     TrapeziumRule, SUPGOptions, Perturbation, CompressibleParameters,
     CompressibleEulerEquations, HydrostaticCompressibleEulerEquations,
-    CompressibleSolver, compressible_hydrostatic_balance
+    CompressibleSolver, compressible_hydrostatic_balance, hydrostatic_parameters
 )
 
 skamarock_klemp_hydrostatic_defaults = {
@@ -116,7 +116,13 @@ def skamarock_klemp_hydrostatic(
     ]
 
     # Linear solver
-    linear_solver = CompressibleSolver(eqns)
+    if hydrostatic:
+        linear_solver = CompressibleSolver(
+            eqns, solver_parameters=hydrostatic_parameters,
+            overwrite_solver_parameters=True
+        )
+    else:
+        linear_solver = CompressibleSolver(eqns)
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
