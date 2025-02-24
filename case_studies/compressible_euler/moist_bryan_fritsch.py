@@ -72,7 +72,7 @@ def moist_bryan_fritsch(
     domain = Domain(mesh, dt, 'CG', element_order)
 
     # Equation
-    params = CompressibleParameters()
+    params = CompressibleParameters(mesh)
     tracers = [WaterVapour(), CloudWater()]
     eqns = CompressibleEulerEquations(
         domain, params, active_tracers=tracers, u_transport_option=u_eqn_type)

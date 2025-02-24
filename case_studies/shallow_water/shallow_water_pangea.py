@@ -72,7 +72,7 @@ def shallow_water_pangea(
 
     # Equation
     xyz = SpatialCoordinate(mesh)
-    parameters = ShallowWaterParameters(H=H)
+    parameters = ShallowWaterParameters(mesh, H=H)
     Omega = parameters.Omega
     fexpr = 2*Omega*xyz[2]/radius
     bexpr = b_field
