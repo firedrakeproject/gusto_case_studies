@@ -85,9 +85,9 @@ def moist_thermal_gw(
     linear_solver = ThermalSWSolver(eqns)
 
     def sat_func(x_in):
-        D = x_in.split()[1]
-        b = x_in.split()[2]
-        q_v = x_in.split()[3]
+        D = x_in.subfunctions[1]
+        b = x_in.subfunctions[2]
+        q_v = x_in.subfunctions[3]
         b_e = b - beta2*q_v
         sat = q0*mean_depth/D * exp(nu*(1-b_e/g))
         return sat
