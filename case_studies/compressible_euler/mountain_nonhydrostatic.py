@@ -101,7 +101,7 @@ def mountain_nonhydrostatic(
     # Equation
     parameters = CompressibleParameters(mesh, g=g, cp=cp)
     sponge = SpongeLayerParameters(
-        H=domain_height, z_level=domain_height-sponge_depth, mubar=mu_dt/dt
+        mesh, H=domain_height, z_level=domain_height-sponge_depth, mubar=mu_dt/dt
     )
     if hydrostatic:
         eqns = HydrostaticCompressibleEulerEquations(
