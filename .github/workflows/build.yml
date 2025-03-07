@@ -50,6 +50,7 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
+          repository: firedrakeproject/gusto
           # Download Gusto into a subdirectory not called 'gusto' to make sure
           # that the package installs correctly. Otherwise 'import gusto' may
           # work even if the installation failed because it is a subdirectory.
