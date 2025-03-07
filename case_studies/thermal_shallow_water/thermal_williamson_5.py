@@ -71,7 +71,7 @@ def thermal_williamson_5(
     lamda, phi, _ = lonlatr_from_xyz(x, y, z)
 
     # Coriolis
-    parameters = ShallowWaterParameters(H=mean_depth, g=g)
+    parameters = ShallowWaterParameters(mesh, H=mean_depth, g=g)
     Omega = parameters.Omega
     fexpr = 2*Omega*z/radius
 

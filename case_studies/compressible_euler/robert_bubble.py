@@ -69,7 +69,7 @@ def robert_bubble(
     domain = Domain(mesh, dt, "CG", element_order)
 
     # Equation
-    parameters = CompressibleParameters()
+    parameters = CompressibleParameters(mesh)
     eqns = CompressibleEulerEquations(
         domain, parameters, u_transport_option=u_eqn_type
     )

@@ -71,7 +71,7 @@ def thermal_galewsky(
     xyz = SpatialCoordinate(mesh)
 
     # Equation
-    parameters = ShallowWaterParameters(H=mean_depth, g=g)
+    parameters = ShallowWaterParameters(mesh, H=mean_depth, g=g)
     Omega = parameters.Omega
     fexpr = 2*Omega*xyz[2]/radius
     eqns = ThermalShallowWaterEquations(
