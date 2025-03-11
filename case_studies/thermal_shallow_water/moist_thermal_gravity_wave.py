@@ -60,7 +60,7 @@ def moist_thermal_gw(
     xyz = SpatialCoordinate(mesh)
 
     # Equation parameters
-    parameters = ShallowWaterParameters(H=mean_depth)
+    parameters = ShallowWaterParameters(mesh, H=mean_depth)
     Omega = parameters.Omega
     fexpr = 2*Omega*xyz[2]/radius
 
