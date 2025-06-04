@@ -26,11 +26,11 @@ from gusto import (
 
 mountain_nonhydrostatic_defaults = {
     'ncolumns': 161,
-    'nlayers': 149,
+    'nlayers': 298,
     'dt': 1.0,
-    'tmax': 1000.,
-    'dumpfreq': 10,
-    'dirname': 'mountain_nonhydrostatic',
+    'tmax': 300.,
+    'dumpfreq': 100,
+    'dirname': 'trapped_lee_waves_highres',
     'hydrostatic': False
 }
 
@@ -157,13 +157,19 @@ def mountain_nonhydrostatic(
 
     # Thermodynamic constants required for setting initial conditions
     # and reference profiles
-    l_sq = conditional(z<2600, 0.08*10**-6, conditional(z<3700, 1.27*10**-6, 0.39*10**-6))
-    l_sq = 0.08*10**-6
-    N = sqrt(l_sq*initial_wind**2)
+    #l_sq = conditional(z<2600, 0.08*10**-6, conditional(z<3700, 1.27*10**-6, 0.39*10**-6))
+    #l_sq = 0.08*10**-6
+    N0_sq = 0.08*10**-6*initial_wind**2
+    N1_sq = 0.60*10**-6*initial_wind**2
+    N2_sq = 0.39*10**-6*initial_wind**2
+    N = conditional(z<2600, sqrt(N0_sq), conditional(z<3700,  sqrt(N1_sq),  sqrt(N2_sq)))
 
     # N^2 = (g/theta)dtheta/dz => dtheta/dz = theta N^2g => theta=theta_0exp(N^2gz)
     x, z = SpatialCoordinate(mesh)
-    thetab = Tsurf*exp(N**2*z/g)
+    #thetab = Tsurf*exp(N**2*z/g)
+    thetab = conditional(z<2600, Tsurf*exp(N0_sq*z/g),
+    	conditional(z<3700, Tsurf*exp((2600/g)*(N0_sq-N1_sq))*exp(N1_sq*z/g),
+    	Tsurf*exp((2600/g)*(N0_sq-N1_sq)+ (3700/g)*(N1_sq-N2_sq))*exp(N2_sq*z/g)))
     theta_b = Function(Vt).interpolate(thetab)
 
     # Calculate hydrostatic exner
