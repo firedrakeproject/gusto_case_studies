@@ -13,7 +13,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     as_vector, VectorFunctionSpace, PeriodicIntervalMesh, ExtrudedMesh,
-    SpatialCoordinate, sqrt, exp, pi, cos, Function, conditional, Mesh, Constant
+    SpatialCoordinate, exp, pi, cos, Function, conditional, Mesh, Constant
 )
 from gusto import (
     Domain, CompressibleParameters, CompressibleSolver, logger,
@@ -25,12 +25,12 @@ from gusto import (
 )
 
 mountain_nonhydrostatic_defaults = {
-    'ncolumns': 161,
-    'nlayers': 149,
-    'dt': 1.0,
-    'tmax': 3000.,
+    'ncolumns': 100,
+    'nlayers': 48,
+    'dt': 2 + 1/12,
+    'tmax': 5000.,
     'dumpfreq': 100,
-    'dirname': 'trapped_lee_waves_paperparams_5km',
+    'dirname': 'durranandklemp_trappedwave_alteredposition',
     'hydrostatic': False
 }
 
@@ -49,14 +49,14 @@ def mountain_nonhydrostatic(
     # Parameters for test case
     # ------------------------------------------------------------------------ #
 
-    domain_width = 161000.   # width of domain in x direction, in m
-    domain_height = 14900.   # height of model top, in m
-    a = 2000.                # scale width of mountain, in m
-    hm = 5.                  # height of mountain, in m
+    domain_width = 80000.   # width of domain in x direction, in m
+    domain_height = 15984.   # height of model top, in m
+    a = 2500.                # scale width of mountain, in m
+    hm = 1.                  # height of mountain, in m
     zh = 5000.               # height at which mesh is no longer distorted, in m
-    Tsurf = 300.             # temperature of surface, in K
-    initial_wind = 10.0      # initial horizontal wind, in m/s
-    #sponge_depth = 10000.0   # depth of sponge layer, in m
+    Tsurf = 250.             # temperature of surface, in K
+    initial_wind = 20.0      # initial horizontal wind, in m/s
+    sponge_depth = 7992.0   # depth of sponge layer, in m
     g = 9.80665              # acceleration due to gravity, in m/s^2
     cp = 1004.               # specific heat capacity at constant pressure
     mu_dt = 0.15             # parameter for strength of sponge layer, no units
@@ -85,7 +85,7 @@ def mountain_nonhydrostatic(
     Vc = VectorFunctionSpace(ext_mesh, "DG", 2)
 
     # Describe the mountain
-    xc = domain_width/2.
+    xc = 20400. #domain_width/2.
     x, z = SpatialCoordinate(ext_mesh)
     zs = hm * a**2 / ((x - xc)**2 + a**2)
     xexpr = as_vector(
@@ -100,7 +100,19 @@ def mountain_nonhydrostatic(
 
     # Equation
     parameters = CompressibleParameters(g=g, cp=cp)
-    eqns = CompressibleEulerEquations(domain, parameters,u_transport_option=u_eqn_type)
+    sponge = SpongeLayerParameters(
+        H=domain_height, z_level=domain_height-sponge_depth, mubar=mu_dt/dt
+    )
+    if hydrostatic:
+        eqns = HydrostaticCompressibleEulerEquations(
+            domain, parameters, sponge_options=sponge,
+            u_transport_option=u_eqn_type
+        )
+    else:
+        eqns = CompressibleEulerEquations(
+            domain, parameters, sponge_options=sponge,
+            u_transport_option=u_eqn_type
+        )
 
     # I/O
     # Adjust default directory name
@@ -157,21 +169,18 @@ def mountain_nonhydrostatic(
 
     # Thermodynamic constants required for setting initial conditions
     # and reference profiles
-    #l_sq = conditional(z<2600, 0.08*10**-6, conditional(z<3700, 1.27*10**-6, 0.39*10**-6))
-    #l_sq = 0.08*10**-6
-    N0_sq = 0.08*10**-6*initial_wind**2
-    N1_sq = 1.29*10**-6*initial_wind**2
-    N2_sq = 0.39*10**-6*initial_wind**2
-    N = conditional(z<2600, sqrt(N0_sq), conditional(z<3700,  sqrt(N1_sq),  sqrt(N2_sq)))
-    
-    z_1 = 1000
-    z_2 = 6000
+    T = 250
+    l1 = 1*10**-6
+    l2 = 1.5*10**-7
+    z1 = 3000
+    z2 = 3666
+    N1 = l1*initial_wind**2
+    N2= l2*initial_wind**2
+    #N_sq = conditional(z<z1, l1*initial_wind**2, conditional(z<z2, (initial_wind**2)*(l1 + (l2-l1/z2-z1)*(z-z1)), l2*initial_wind**2))
+
     # N^2 = (g/theta)dtheta/dz => dtheta/dz = theta N^2g => theta=theta_0exp(N^2gz)
     x, z = SpatialCoordinate(mesh)
-    #thetab = Tsurf*exp(N**2*z/g)
-    thetab = conditional(z<z_1, Tsurf*exp(N0_sq*z/g),
-    	conditional(z<z_2, Tsurf*exp((z_1/g)*(N0_sq-N1_sq))*exp(N1_sq*z/g),
-    	Tsurf*exp((z_1/g)*(N0_sq-N1_sq)+ (z_2/g)*(N1_sq-N2_sq))*exp(N2_sq*z/g)))
+    thetab = conditional(z<z1, Tsurf*exp(N1*z/g), Tsurf*exp((z1/g)*(N1-N2))*exp(N2*z/g))
     theta_b = Function(Vt).interpolate(thetab)
 
     # Calculate hydrostatic exner
