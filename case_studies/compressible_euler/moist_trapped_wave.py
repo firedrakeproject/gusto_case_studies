@@ -13,16 +13,18 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     as_vector, VectorFunctionSpace, PeriodicIntervalMesh, ExtrudedMesh,
-    SpatialCoordinate, exp, pi, cos, Function, conditional, Mesh, Constant
+    SpatialCoordinate, tanh, exp, pi, cos, Function, conditional, Mesh, Constant
 )
 from gusto import (
     Domain, CompressibleParameters, CompressibleSolver, logger,
     CompressibleEulerEquations, HydrostaticCompressibleEulerEquations,
     OutputParameters, IO, SSPRK3, DGUpwind, SemiImplicitQuasiNewton,
-    unsaturated_hydrostatic_balance, SpongeLayerParameters, Exner, ZComponent,
+    compressible_hydrostatic_balance, SpongeLayerParameters, Exner, ZComponent,
     Perturbation, SUPGOptions, TrapeziumRule, MaxKernel, MinKernel,
-    hydrostatic_parameters, WaterVapour, CloudWater, SaturationAdjustment, ForwardEuler
+    hydrostatic_parameters, WaterVapour, SaturationAdjustment, ForwardEuler, CloudWater
 )
+
+import gusto.equations.thermodynamics as td
 
 mountain_nonhydrostatic_defaults = {
     'ncolumns': 100,
@@ -100,7 +102,7 @@ def mountain_nonhydrostatic(
 
     # Equation
     parameters = CompressibleParameters(mesh, g=g, cp=cp)
-    tracers = [WaterVapour(), CloudWater()]
+    tracers = [WaterVapour() , CloudWater()]
     sponge = SpongeLayerParameters(
         mesh, H=domain_height, z_level=domain_height-sponge_depth, mubar=mu_dt/dt
     )
@@ -179,15 +181,16 @@ def mountain_nonhydrostatic(
     Vt = domain.spaces("theta")
     Vr = domain.spaces("DG")
 
-    # Thermodynamic constants required for setting initial conditions
+    # Constants required for setting initial conditions
     # and reference profiles
     T = 250
+    k = 1
+    m = 1
     l1 = 1*10**-6
     l2 = 1.5*10**-7
     z1 = 3000
     N1 = l1*initial_wind**2
     N2= l2*initial_wind**2
-    #N_sq = conditional(z<z1, l1*initial_wind**2, conditional(z<z2, (initial_wind**2)*(l1 + (l2-l1/z2-z1)*(z-z1)), l2*initial_wind**2))
 
     # N^2 = (g/theta)dtheta/dz => dtheta/dz = theta N^2g => theta=theta_0exp(N^2gz)
     x, z = SpatialCoordinate(mesh)
@@ -195,10 +198,12 @@ def mountain_nonhydrostatic(
     theta_b = Function(Vt).interpolate(thetab)
 
     # Relative humidity
-    relhum = conditional(x < (xc - a), conditional(z<z1, 100, 0), 0)
-    rel_hum = Function(Vt).interpolate(relhum)
-    cloud = conditional(x < (xc - a), conditional(z<z1, 0.0002, 0), 0)
-    water_c0.interpolate(cloud)
+    relhum = conditional(x < (xc - a), conditional(z<z1, -tanh(k*(z-z1))*-tanh(m*(x-(xc-a))), 0), 0)
+
+    # Cloud content
+    #cloud = conditional(x < (xc - a), conditional(z<z1, -0.0002*tanh(k*(z-z1))*-tanh(m*(x-(xc-a))), 0), 0)
+    cloud = 0
+    cloud_cont = Function(Vt).interpolate(cloud)
 
     # Calculate hydrostatic exner
     exner = Function(Vr)
@@ -212,8 +217,8 @@ def mountain_nonhydrostatic(
     # This gives us a guess for the top boundary condition
     bottom_boundary = Constant(exner_surf, domain=mesh)
     logger.info(f'Solving hydrostatic with bottom Exner of {exner_surf}')
-    unsaturated_hydrostatic_balance(
-        eqns, stepper.fields, theta_b, rel_hum, top=False, exner_boundary=bottom_boundary
+    compressible_hydrostatic_balance(
+        eqns, theta_b, rho_b, exner, top=False, exner_boundary=bottom_boundary
     )
 
     # Solve hydrostatic balance again, but now use minimum value from first
@@ -221,8 +226,8 @@ def mountain_nonhydrostatic(
     top_value = min_kernel.apply(exner)
     top_boundary = Constant(top_value, domain=mesh)
     logger.info(f'Solving hydrostatic with top Exner of {top_value}')
-    unsaturated_hydrostatic_balance(
-        eqns, stepper.fields, theta_b, rel_hum, top=True, exner_boundary=top_boundary
+    compressible_hydrostatic_balance(
+        eqns, theta_b, rho_b, exner, top=True, exner_boundary=top_boundary
     )
 
     max_bottom_value = max_kernel.apply(exner)
@@ -245,8 +250,8 @@ def mountain_nonhydrostatic(
             + f'of {top_guess}'
         )
 
-        unsaturated_hydrostatic_balance(
-            eqns, stepper.fields, theta_b, rel_hum, top=True, exner_boundary=top_boundary
+        compressible_hydrostatic_balance(
+            eqns, theta_b, rho_b, exner, top=True, exner_boundary=top_boundary
         )
 
         max_bottom_value = max_kernel.apply(exner)
@@ -259,14 +264,21 @@ def mountain_nonhydrostatic(
 
     logger.info(f'Final max bottom Exner value of {max_bottom_value}')
 
+    # Calculate mixing ratio
+    pressure = td.p(parameters, exner)
+    mixing_ratio = td.r_v(parameters, relhum, T, pressure)
+    mixing = Function(Vt).interpolate(mixing_ratio)
+
     # Perform a final solve to obtain hydrostatically balanced rho
-    unsaturated_hydrostatic_balance(
-        eqns, stepper.fields, theta_b, rel_hum, top=True, exner_boundary=top_boundary,
+    compressible_hydrostatic_balance(
+        eqns, theta_b, rho_b, exner, top=True, exner_boundary=top_boundary,
         solve_for_rho=True
     )
 
     theta0.assign(theta_b)
     rho0.assign(rho_b)
+    water_v0.assign(mixing)
+    water_c0.assign(cloud_cont)
     u0.project(as_vector([initial_wind, 0.0]), bcs=eqns.bcs['u'])
 
     stepper.set_reference_profiles([('rho', rho_b), ('theta', theta_b)])
