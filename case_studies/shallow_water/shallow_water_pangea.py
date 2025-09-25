@@ -72,12 +72,10 @@ def shallow_water_pangea(
 
     # Equation
     xyz = SpatialCoordinate(mesh)
-    parameters = ShallowWaterParameters(mesh, H=H)
-    Omega = parameters.Omega
-    fexpr = 2*Omega*xyz[2]/radius
     bexpr = b_field
+    parameters = ShallowWaterParameters(mesh, H=H, topog_expr=bexpr)
     eqns = ShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, topog_expr=bexpr,
+        domain, parameters,
         u_transport_option=u_eqn_type
     )
 
@@ -109,6 +107,7 @@ def shallow_water_pangea(
     D0 = stepper.fields('D')
     uexpr = as_vector([-u_max*xyz[1]/radius, u_max*xyz[0]/radius, 0.0])
     g = parameters.g
+    Omega = parameters.Omega
     Rsq = radius**2
     Dexpr = H - ((radius*Omega*u_max + 0.5*u_max**2)*xyz[2]**2/Rsq)/g - bexpr
 
