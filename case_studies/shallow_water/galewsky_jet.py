@@ -72,10 +72,8 @@ def galewsky_jet(
     # Equation
     xyz = SpatialCoordinate(mesh)
     parameters = ShallowWaterParameters(mesh, H=H)
-    Omega = parameters.Omega
-    fexpr = 2*Omega*xyz[2]/radius
     eqns = ShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, u_transport_option=u_eqn_type
+        domain, parameters, u_transport_option=u_eqn_type
     )
 
     # I/O and diagnostics
