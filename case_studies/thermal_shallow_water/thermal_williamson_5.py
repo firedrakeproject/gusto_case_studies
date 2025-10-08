@@ -70,20 +70,17 @@ def thermal_williamson_5(
     x, y, z = SpatialCoordinate(mesh)
     lamda, phi, _ = lonlatr_from_xyz(x, y, z)
 
-    # Coriolis
-    parameters = ShallowWaterParameters(mesh, H=mean_depth, g=g)
-    Omega = parameters.Omega
-    fexpr = 2*Omega*z/radius
-
     # Mountain
     rsq = min_value(R0**2, (lamda - lamda_c)**2 + (phi - phi_c)**2)
     r = sqrt(rsq)
     tpexpr = mountain_height * (1 - r/R0)
 
     # Equation
+    parameters = ShallowWaterParameters(
+        mesh, H=mean_depth, g=g, topog_expr=tpexpr
+    )
     eqns = ThermalShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, topog_expr=tpexpr,
-        u_transport_option=u_eqn_type
+        domain, parameters, u_transport_option=u_eqn_type
     )
 
     # I/O
