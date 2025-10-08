@@ -133,7 +133,7 @@ def robert_bubble(
     theta0.interpolate(theta_b + theta_pert)
     rho0.interpolate(rho_b)
     u0.project(as_vector(
-        [Constant(0.0, domain=mesh), Constant(0.0, domain=mesh)]
+        [Constant(0.0), Constant(0.0)]
     ))
 
     stepper.set_reference_profiles([('rho', rho_b), ('theta', theta_b)])

@@ -185,7 +185,7 @@ def moist_bryan_fritsch(
 
     # wind initially zero
     u0.project(as_vector(
-        [Constant(0.0, domain=mesh), Constant(0.0, domain=mesh)]
+        [Constant(0.0), Constant(0.0)]
     ))
 
     stepper.set_reference_profiles(
