@@ -72,10 +72,8 @@ def thermal_galewsky(
 
     # Equation
     parameters = ShallowWaterParameters(mesh, H=mean_depth, g=g)
-    Omega = parameters.Omega
-    fexpr = 2*Omega*xyz[2]/radius
     eqns = ThermalShallowWaterEquations(
-        domain, parameters, u_transport_option=u_eqn_type, fexpr=fexpr
+        domain, parameters, u_transport_option=u_eqn_type
     )
 
     # I/O
@@ -122,7 +120,8 @@ def thermal_galewsky(
     b0_field = stepper.fields("b")
 
     # Parameters
-    g = parameters.g
+    g = float(parameters.g)
+    Omega = float(parameters.Omega)
     e_n = np.exp(-4./((phi1-phi0)**2))
 
     lon, lat, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])

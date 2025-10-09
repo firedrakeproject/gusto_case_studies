@@ -61,13 +61,11 @@ def moist_thermal_gw(
 
     # Equation parameters
     parameters = ShallowWaterParameters(mesh, H=mean_depth)
-    Omega = parameters.Omega
-    fexpr = 2*Omega*xyz[2]/radius
 
     # Equation
     tracers = [WaterVapour(space='DG'), CloudWater(space='DG')]
     eqns = ThermalShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, active_tracers=tracers
+        domain, parameters, active_tracers=tracers
     )
 
     # IO
@@ -138,7 +136,7 @@ def moist_thermal_gw(
 
     # Buoyancy -- dependent on latitude
     g = parameters.g
-    w = Omega*radius*u_max + (u_max**2)/2
+    w = parameters.Omega*radius*u_max + (u_max**2)/2
     sigma = w/10
     theta_0 = epsilon*phi_0**2
     numerator = (

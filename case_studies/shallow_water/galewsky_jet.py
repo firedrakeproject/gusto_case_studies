@@ -136,9 +136,9 @@ def galewsky_jet(
 
     # Function for depth field in terms of u function
     def h_func(y):
-        h_array = u_func(y)*radius/g*(
-            2*Omega*np.sin(y)
-            + u_func(y)*np.tan(y)/radius
+        h_array = u_func(y)*float(radius)/float(g)*(
+            2*float(Omega)*np.sin(y)
+            + u_func(y)*np.tan(y)/float(radius)
         )
 
         return h_array
