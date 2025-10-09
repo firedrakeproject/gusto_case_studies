@@ -131,7 +131,7 @@ def thermal_williamson_5(
 
     Dexpr = (
         mean_depth - tpexpr
-        - (radius * Omega * u_max + 0.5*u_max**2)*(z/radius)**2/g
+        - (radius * parameters.Omega * u_max + 0.5*u_max**2)*(z/radius)**2/g
     )
 
     # Expression for initial buoyancy - note the bracket around 1-mu
