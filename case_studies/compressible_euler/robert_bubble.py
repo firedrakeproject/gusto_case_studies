@@ -75,7 +75,6 @@ def robert_bubble(
     )
 
     # I/O
-    dirname = 'robert_bubble'
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )

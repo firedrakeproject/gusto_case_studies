@@ -6,6 +6,7 @@ from mountain_hydrostatic import mountain_hydrostatic
 from mountain_nonhydrostatic import mountain_nonhydrostatic
 from robert_bubble import robert_bubble
 from skamarock_klemp_hydrostatic import skamarock_klemp_hydrostatic
+from travelling_vortex import travelling_vortex
 import pytest
 
 
@@ -140,4 +141,30 @@ def test_hyd_switch_skamarock_klemp_hydrostatic():
         dumpfreq=10,
         dirname='pytest_hyd_switch_skamarock_klemp_hydrostatic',
         hydrostatic=True
+    )
+
+def test_travelling_vortex_0_1():
+    travelling_vortex(
+        ncolumns=5,
+        nlayers=5,
+        dt=0.1,
+        tmax=0.2,
+        dumpfreq=2,
+        dirname='pytest_travelling_vortex_0_1',
+        horder=0,
+        vorder=1,
+        direction='horizontal'
+    )
+
+def test_travelling_vortex_1_0():
+    travelling_vortex(
+        ncolumns=5,
+        nlayers=5,
+        dt=0.1,
+        tmax=0.2,
+        dumpfreq=2,
+        dirname='pytest_travelling_vortex_1_0',
+        horder=1,
+        vorder=0,
+        direction='horizontal'
     )
