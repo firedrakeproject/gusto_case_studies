@@ -31,3 +31,14 @@ def test_moist_thermal_gravity_wave():
         dumpfreq=2,
         dirname='pytest_moist_thermal_gravity_wave'
     )
+
+
+def test_moist_thermal_gravity_wave_equivb():
+    moist_thermal_gw(
+        ncells_per_edge=4,
+        dt=900,
+        tmax=1800,
+        dumpfreq=2,
+        dirname='pytest_moist_thermal_gravity_wave_equivb',
+        equivb=True
+    )
