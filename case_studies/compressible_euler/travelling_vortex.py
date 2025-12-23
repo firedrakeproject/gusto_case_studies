@@ -33,7 +33,7 @@ travelling_vortex_defaults = {
     'dt': 0.1,
     'tmax': 100.0,
     'dumpfreq': 250,
-    'dirname': 'traveling_vortex',
+    'dirname': 'travelling_vortex',
     'horder': 1,
     'vorder': 1,
     'direction': 'diagonal'
@@ -78,7 +78,9 @@ def travelling_vortex(
 
     # Equations
     params = CompressibleParameters(mesh, g=0)
-    eqns = CompressibleEulerEquations(domain, params)
+    eqns = CompressibleEulerEquations(
+        domain, params, u_transport_option='vector_advection_form'
+    )
     eqns.bcs['u'] = []  # For periodic vertical slice need to zero BCs
 
     # I/O
@@ -108,7 +110,7 @@ def travelling_vortex(
             SSPRK3(
                 domain, "rho", options=opts.DG_options,
                 subcycling_options=subcycling_opts,
-                # rk_formulation=RungeKuttaFormulation.linear
+                rk_formulation=RungeKuttaFormulation.linear
             ),
             SSPRK3(
                 domain, "theta", options=opts.theta_options,
@@ -119,7 +121,10 @@ def travelling_vortex(
     else:
         opts = EmbeddedDGOptions()
         transported_fields = [
-            SSPRK3(domain, "u", options=opts),
+            SSPRK3(
+                domain, "u", options=opts,
+                subcycling_options=subcycling_opts
+            ),
             SSPRK3(
                 domain, "rho", rk_formulation=RungeKuttaFormulation.linear,
                 subcycling_options=subcycling_opts
@@ -132,7 +137,7 @@ def travelling_vortex(
 
     transport_methods = [
         DGUpwind(eqns, "u"),
-        DGUpwind(eqns, "rho"), # advective_then_flux=True),
+        DGUpwind(eqns, "rho", advective_then_flux=True),
         DGUpwind(eqns, "theta")
     ]
 
