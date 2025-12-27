@@ -46,7 +46,6 @@ def moist_thermal_gw(
     # ------------------------------------------------------------------------ #
 
     radius = 6371220.           # planetary radius (m)
-    mean_depth = 5960.          # reference depth (m)
     q0 = 0.0115                 # saturation curve coefficient (kg/kg)
     beta2 = 9.80616*10          # thermal feedback coefficient (m/s^2)
     nu = 1.5                    # dimensionless parameter in saturation curve
@@ -56,6 +55,8 @@ def moist_thermal_gw(
     phi_0 = 3.0e4               # scale factor for poleward buoyancy gradient
     epsilon = 1/300             # linear air expansion coeff (1/K)
     u_max = 20.                 # max amplitude of the zonal wind (m/s)
+    g = 9.80616                 # acceleration due to gravity (m/s^2)
+    mean_depth = phi_0/g        # reference depth (m)
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -83,7 +84,7 @@ def moist_thermal_gw(
         dirname += '_equivb'
 
     if equivb:
-        dumplist = ['b_e', 'D']
+        dumplist = ['b_e', 'D', 'q_t']
         diagnostic_fields = [
             ZonalComponent('u'), MeridionalComponent('u'),
             PartitionedCloud(eqns)
@@ -156,7 +157,8 @@ def moist_thermal_gw(
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,
         linear_solver=linear_solver, inner_physics_schemes=physics_schemes,
-        num_outer=2, num_inner=2, solver_prognostics=solver_prognostics
+        num_outer=2, num_inner=2, solver_prognostics=solver_prognostics,
+        reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #
@@ -195,27 +197,28 @@ def moist_thermal_gw(
     )
     theta = numerator / denominator
 
-    # Depth -- in balance with the contribution of a perturbation
-    Dexpr = mean_depth - (1/g)*(w + sigma)*((sin(phi))**2)
+    # Depth -- in balance before the addition of a perturbation
+    Dbar_expr = mean_depth - (1/g)*(w + sigma)*((sin(phi))**2)
 
     # Perturbation
     lsq = (lamda - lamda_c)**2
     thsq = (phi - phi_c)**2
     rsq = min_value(R0**2, lsq+thsq)
     r = sqrt(rsq)
-    pert = 2000 * (1 - r/R0)
-    Dexpr += pert
+    Dpert = 2000 * (1 - r/R0)
+    Dexpr = Dbar_expr + Dpert
 
     # Actual initial buoyancy is specified through equivalent buoyancy
-    q_t = 0.03
-    b_guess = parameters.g * (1 - theta)
-    b_init = Function(b0.function_space()).interpolate(b_guess)
+    q_t = 0.03  # Large enough to prevent cloud ever going negative
+    bexpr = parameters.g * (1 - theta)  # Find balanced b from theta
+    b_init = Function(b0.function_space()).interpolate(bexpr)
     b_e_init = Function(b0.function_space()).interpolate(b_init - beta2*q_t)
     q_v_init = Function(b0.function_space()).interpolate(q_t)
 
     # Iterate to obtain equivalent buoyancy and saturation water vapour
+    # Saturation curve depends on b_e, which depends on saturation curve
+    # Use Newton-Raphson method to find an appropriate solution
     n_iterations = 10
-
     for _ in range(n_iterations):
         q_sat_expr = q0*mean_depth/Dexpr * exp(nu*(1-b_e_init/g))
         dq_sat_dq_v_expr = nu*beta2/g*q_sat_expr
@@ -225,8 +228,8 @@ def moist_thermal_gw(
     # Water vapour set to saturation amount
     vexpr = q0*mean_depth/Dexpr * exp(nu*(1-b_e_init/g))
 
-    # Back out the initial buoyancy using b_e and q_v
-    bexpr = b_e_init + beta2*vexpr
+    if equivb:
+        bexpr = b_e_init
 
     # Cloud is the rest of total liquid that isn't vapour
     cexpr = Constant(q_t) - vexpr
@@ -241,13 +244,16 @@ def moist_thermal_gw(
         v0.interpolate(vexpr)
         c0.interpolate(cexpr)
 
-    # Set reference profiles
-    Dbar = Function(D0.function_space()).assign(mean_depth)
+    # Set reference profiles to initial state
+    Dbar = Function(D0.function_space()).interpolate(Dexpr)
     bbar = Function(b0.function_space()).interpolate(bexpr)
     if equivb:
         stepper.set_reference_profiles([('D', Dbar), ('b_e', bbar)])
     else:
-        stepper.set_reference_profiles([('D', Dbar), ('b', bbar)])
+        stepper.set_reference_profiles([
+            ('D', Dbar), ('b', bbar), ('water_vapour', v0),
+            ('cloud_water', c0)
+        ])
 
     # ----------------------------------------------------------------- #
     # Run

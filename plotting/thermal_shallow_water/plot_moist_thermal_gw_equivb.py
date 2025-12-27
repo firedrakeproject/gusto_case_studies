@@ -16,14 +16,14 @@ from tomplot import (
 # ---------------------------------------------------------------------------- #
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
-results_file_name = f'{abspath(dirname(__file__))}/../../results/moist_thermal_gw/field_output.nc'
-plot_stem = f'{abspath(dirname(__file__))}/../../figures/thermal_shallow_water/moist_thermal_gw'
+results_file_name = f'{abspath(dirname(__file__))}/../../results/moist_thermal_gw_equivb/field_output.nc'
+plot_stem = f'{abspath(dirname(__file__))}/../../figures/thermal_shallow_water/moist_thermal_gw_equivb'
 beta2 = 9.80616*10
 
 # ---------------------------------------------------------------------------- #
 # Initial plot details
 # ---------------------------------------------------------------------------- #
-init_field_names = ['u', 'D', 'cloud_water', 'b_e']
+init_field_names = ['u', 'D', 'PartitionedCloud', 'b_e']
 init_colour_schemes = ['Oranges', 'YlGnBu', 'cividis', 'PuRd_r']
 init_field_labels = [r'$|u|$ (m s$^{-1}$)', r'$D$ (m)',
                      r'$q_{cl}$ (kg kg$^{-1})$', r'$b_e$ (m s$^{-2}$)']
@@ -36,7 +36,7 @@ init_contours = [np.linspace(0.0, 20.0, 9),
 # ---------------------------------------------------------------------------- #
 # Final plot details
 # ---------------------------------------------------------------------------- #
-final_field_names = ['cloud_water', 'b_e']
+final_field_names = ['PartitionedCloud', 'b_e']
 final_colour_schemes = ['cividis', 'PuRd_r']
 final_field_labels = [r'$q_{cl}$ (kg kg$^{-1}$)', r'$b_e$ (m s$^{-2}$)']
 final_contours_to_remove = [None, None]
@@ -50,7 +50,7 @@ contour_method = 'tricontour'
 xlims = [-180, 180]
 ylims = [-90, 90]
 minmax_format = {
-    'cloud_water': '.1e',
+    'PartitionedCloud': '.1e',
     'b_e': '.2f',
     'u': '.1f',
     'D': '.0f'
@@ -77,12 +77,6 @@ for i, (ax, field_name, colour_scheme, field_label, contour_to_remove, contours)
         meridional_data = extract_gusto_field(data_file, 'u_meridional', time_idx=time_idx)
         field_data = np.sqrt(zonal_data**2 + meridional_data**2)
         coords_X, coords_Y = extract_gusto_coords(data_file, 'u_zonal')
-
-    elif field_name == 'b_e' and 'b_e' not in data_file.variables.keys():
-        b_data = extract_gusto_field(data_file, 'b', time_idx=time_idx)
-        qv_data = extract_gusto_field(data_file, 'water_vapour', time_idx=time_idx)
-        coords_X, coords_Y = extract_gusto_coords(data_file, 'b')
-        field_data = b_data - beta2*qv_data
 
     else:
         field_data = extract_gusto_field(data_file, field_name, time_idx=time_idx)
@@ -154,15 +148,8 @@ for i, (ax, field_name, colour_scheme, field_label, contour_to_remove, contours)
         final_field_labels, final_contours_to_remove, final_contours)):
 
     # Data extraction ----------------------------------------------------------
-    if field_name == 'b_e' and 'b_e' not in data_file.variables.keys():
-        b_data = extract_gusto_field(data_file, 'b', time_idx=time_idx)
-        qv_data = extract_gusto_field(data_file, 'water_vapour', time_idx=time_idx)
-        coords_X, coords_Y = extract_gusto_coords(data_file, 'b')
-        field_data = b_data - beta2*qv_data
-
-    else:
-        field_data = extract_gusto_field(data_file, field_name, time_idx=time_idx)
-        coords_X, coords_Y = extract_gusto_coords(data_file, field_name)
+    field_data = extract_gusto_field(data_file, field_name, time_idx=time_idx)
+    coords_X, coords_Y = extract_gusto_coords(data_file, field_name)
 
     time = data_file['time'][time_idx] / (24.*60.*60.)
 
