@@ -18,10 +18,10 @@ from firedrake import (
 
 from gusto import (
     Domain, CompressibleEulerEquations, IO, CompressibleParameters, DGUpwind,
-    SSPRK3, TrapeziumRule, SemiImplicitQuasiNewton, EmbeddedDGOptions,
+    SSPRK3, SemiImplicitQuasiNewton, EmbeddedDGOptions, ThetaLimiter,
     WaterVapour, CloudWater, OutputParameters, Theta_e, SaturationAdjustment,
     ForwardEuler, saturated_hydrostatic_balance, thermodynamics, Recoverer,
-    CompressibleSolver
+    RungeKuttaFormulation
 )
 
 moist_bryan_fritsch_defaults = {
@@ -58,7 +58,7 @@ def moist_bryan_fritsch(
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
     element_order = 1
-    u_eqn_type = 'vector_invariant_form'
+    u_eqn_type = 'vector_advection_form'
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -85,29 +85,30 @@ def moist_bryan_fritsch(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
+    theta_opts = EmbeddedDGOptions()
+    limiter = ThetaLimiter(domain.spaces('theta'))
     transported_fields = [
-        SSPRK3(domain, "rho"),
-        SSPRK3(domain, "theta", options=EmbeddedDGOptions()),
-        SSPRK3(domain, "water_vapour", options=EmbeddedDGOptions()),
-        SSPRK3(domain, "cloud_water", options=EmbeddedDGOptions()),
-        TrapeziumRule(domain, "u")
+        SSPRK3(domain, "u"),
+        SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
+        SSPRK3(domain, "theta", options=theta_opts),
+        SSPRK3(domain, "water_vapour", options=theta_opts, limiter=limiter),
+        SSPRK3(domain, "cloud_water", options=theta_opts, limiter=limiter)
     ]
-
     transport_methods = [
-        DGUpwind(eqns, field) for field in
-        ["u", "rho", "theta", "water_vapour", "cloud_water"]
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "rho", advective_then_flux=True),
+        DGUpwind(eqns, "theta"),
+        DGUpwind(eqns, "water_vapour"),
+        DGUpwind(eqns, "cloud_water")
     ]
-
-    # Linear solver
-    linear_solver = CompressibleSolver(eqns)
 
     # Physics schemes (condensation/evaporation)
     physics_schemes = [(SaturationAdjustment(eqns), ForwardEuler(domain))]
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, physics_schemes=physics_schemes
+        eqns, io, transported_fields, spatial_methods=transport_methods,
+        tau_values={'rho': 1.0, 'theta': 1.0}, physics_schemes=physics_schemes
     )
 
     # ------------------------------------------------------------------------ #

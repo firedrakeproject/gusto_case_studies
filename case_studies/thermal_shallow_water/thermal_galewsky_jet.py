@@ -14,7 +14,7 @@ from gusto import (
     ShallowWaterParameters, ThermalShallowWaterEquations, SubcyclingOptions,
     lonlatr_from_xyz, GeneralCubedSphereMesh, RelativeVorticity,
     ZonalComponent, MeridionalComponent, RungeKuttaFormulation, SSPRK3,
-    SemiImplicitQuasiNewton, ThermalSWSolver, NumericalIntegral
+    SemiImplicitQuasiNewton, NumericalIntegral
 )
 
 import numpy as np
@@ -57,7 +57,6 @@ def thermal_galewsky(
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
 
-    alpha = 0.5
     element_order = 1
     u_eqn_type = 'vector_advection_form'
 
@@ -101,14 +100,10 @@ def thermal_galewsky(
         DGUpwind(eqns, "b"),
     ]
 
-    # Linear solver
-    linear_solver = ThermalSWSolver(eqns, alpha=alpha)
-
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, alpha=alpha,
-        num_outer=2, num_inner=2
+        tau_values={'D': 1.0, 'b': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #

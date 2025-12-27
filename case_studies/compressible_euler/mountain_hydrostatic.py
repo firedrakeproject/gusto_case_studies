@@ -17,11 +17,11 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, SemiImplicitQuasiNewton, SSPRK3, DGUpwind,
-    TrapeziumRule, SUPGOptions, ZComponent, Perturbation, Temperature, Exner,
-    SpongeLayerParameters, CompressibleParameters, CompressibleSolver, logger,
+    ZComponent, Perturbation, Temperature, Exner,
+    SpongeLayerParameters, CompressibleParameters, logger,
     compressible_hydrostatic_balance, MinKernel, MaxKernel,
     HydrostaticCompressibleEulerEquations, CompressibleEulerEquations,
-    hydrostatic_parameters
+    EmbeddedDGOptions, RungeKuttaFormulation
 )
 
 mountain_hydrostatic_defaults = {
@@ -68,7 +68,7 @@ def mountain_hydrostatic(
     # ------------------------------------------------------------------------ #
 
     element_order = 1
-    u_eqn_type = 'vector_invariant_form'
+    u_eqn_type = 'vector_advection_form'
     alpha = 0.55  # Necessary to absorb grid scale waves
 
     # ------------------------------------------------------------------------ #
@@ -128,31 +128,22 @@ def mountain_hydrostatic(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    theta_opts = SUPGOptions()
+    theta_opts = EmbeddedDGOptions()
     transported_fields = [
-        TrapeziumRule(domain, "u"),
-        SSPRK3(domain, "rho"),
+        SSPRK3(domain, "u"),
+        SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
         SSPRK3(domain, "theta", options=theta_opts)
     ]
     transport_methods = [
         DGUpwind(eqns, "u"),
-        DGUpwind(eqns, "rho"),
-        DGUpwind(eqns, "theta", ibp=theta_opts.ibp)
+        DGUpwind(eqns, "rho", advective_then_flux=True),
+        DGUpwind(eqns, "theta")
     ]
-
-    # Linear solver
-    if hydrostatic:
-        linear_solver = CompressibleSolver(
-            eqns, alpha, solver_parameters=hydrostatic_parameters,
-            overwrite_solver_parameters=True
-        )
-    else:
-        linear_solver = CompressibleSolver(eqns, alpha)
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, alpha=alpha
+        alpha=alpha, tau_values={'rho': 1.0, 'theta': 1.0}
     )
 
     # ------------------------------------------------------------------------ #

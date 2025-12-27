@@ -13,15 +13,15 @@ from petsc4py import PETSc
 PETSc.Sys.popErrorHandler()
 from firedrake import (
     as_vector, SpatialCoordinate, PeriodicIntervalMesh, ExtrudedMesh, exp, sin,
-    Function, pi, errornorm, TestFunction, dx, BrokenElement, FunctionSpace,
+    Function, pi, errornorm, TestFunction, dx,
     NonlinearVariationalProblem, NonlinearVariationalSolver
 )
 from gusto import (
     Domain, IO, OutputParameters, SemiImplicitQuasiNewton, SSPRK3, DGUpwind,
     Perturbation, thermodynamics, CompressibleParameters,
-    CompressibleEulerEquations, RungeKuttaFormulation, CompressibleSolver,
+    CompressibleEulerEquations, RungeKuttaFormulation,
     WaterVapour, CloudWater, Theta_e, Recoverer, saturated_hydrostatic_balance,
-    EmbeddedDGOptions, ForwardEuler, SaturationAdjustment, SubcyclingOptions
+    EmbeddedDGOptions, ForwardEuler, SaturationAdjustment,
 )
 
 moist_skamarock_klemp_defaults = {
@@ -61,8 +61,7 @@ def moist_skamarock_klemp(
     # ------------------------------------------------------------------------ #
 
     element_order = 1
-    alpha = 0.5
-    u_eqn_type = 'vector_invariant_form'
+    u_eqn_type = 'vector_advection_form'
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -90,32 +89,13 @@ def moist_skamarock_klemp(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    Vt_brok = FunctionSpace(
-        mesh, BrokenElement(domain.spaces("theta").ufl_element())
-    )
-    embedded_dg = EmbeddedDGOptions(embedding_space=Vt_brok)
-    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
+    theta_opts = EmbeddedDGOptions()
     transported_fields = [
-        SSPRK3(
-            domain, "u", subcycling_options=subcycling_opts,
-            rk_formulation=RungeKuttaFormulation.predictor
-        ),
-        SSPRK3(
-            domain, "rho", subcycling_options=subcycling_opts,
-            rk_formulation=RungeKuttaFormulation.linear
-        ),
-        SSPRK3(
-            domain, "theta",
-            subcycling_options=subcycling_opts, options=embedded_dg
-        ),
-        SSPRK3(
-            domain, "water_vapour",
-            subcycling_options=subcycling_opts, options=embedded_dg
-        ),
-        SSPRK3(
-            domain, "cloud_water",
-            subcycling_options=subcycling_opts, options=embedded_dg
-        )
+        SSPRK3(domain, "u"),
+        SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
+        SSPRK3(domain, "theta", options=theta_opts),
+        SSPRK3(domain, "water_vapour", options=theta_opts),
+        SSPRK3(domain, "cloud_water", options=theta_opts)
     ]
     transport_methods = [
         DGUpwind(eqns, "u"),
@@ -125,10 +105,6 @@ def moist_skamarock_klemp(
         DGUpwind(eqns, "cloud_water")
     ]
 
-    # Linear solver
-    tau_values = {'rho': 1.0, 'theta': 1.0}
-    linear_solver = CompressibleSolver(eqns, alpha=alpha, tau_values=tau_values)
-
     # Physics schemes
     physics_schemes = [
         (SaturationAdjustment(eqns), ForwardEuler(domain))
@@ -137,8 +113,7 @@ def moist_skamarock_klemp(
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, physics_schemes=physics_schemes,
-        alpha=alpha, reference_update_freq=1, accelerator=True
+        tau_values={'rho': 1.0, 'theta': 1.0}, physics_schemes=physics_schemes
     )
 
     # ------------------------------------------------------------------------ #

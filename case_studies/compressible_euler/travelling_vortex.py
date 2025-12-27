@@ -12,7 +12,7 @@ vertical element orders separately.
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from gusto import (
-    Domain, CompressibleParameters, CompressibleSolver,
+    Domain, CompressibleParameters,
     OutputParameters, IO, SSPRK3, DGUpwind, SemiImplicitQuasiNewton,
     RungeKuttaFormulation, SteadyStateError, Pressure,
     CompressibleEulerEquations, SubcyclingOptions,
@@ -141,14 +141,10 @@ def travelling_vortex(
         DGUpwind(eqns, "theta")
     ]
 
-    # Linear solver
-    tau_values = {'rho': 1.0, 'theta': 1.0}
-    linear_solver = CompressibleSolver(eqns, tau_values=tau_values)
-
     # Timestepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver
+        tau_values={'rho': 1.0, 'theta': 1.0}
     )
 
     # ------------------------------------------------------------------------------

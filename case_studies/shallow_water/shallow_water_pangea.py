@@ -16,7 +16,8 @@ from firedrake import SpatialCoordinate, as_vector, CheckpointFile, Function
 from gusto import (
     Domain, IO, OutputParameters, Sum, RelativeVorticity, ZonalComponent,
     MeridionalComponent, ShallowWaterEquations, ShallowWaterParameters,
-    SSPRK3, DGUpwind, SemiImplicitQuasiNewton
+    SSPRK3, DGUpwind, SemiImplicitQuasiNewton, RungeKuttaFormulation,
+    SubcyclingOptions
 
 )
 import os.path as osp
@@ -91,12 +92,23 @@ def shallow_water_pangea(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    transported_fields = [SSPRK3(domain, "u"), SSPRK3(domain, "D")]
-    transport_methods = [DGUpwind(eqns, "u"), DGUpwind(eqns, "D")]
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
+    transported_fields = [
+        SSPRK3(domain, "u", subcycling_options=subcycling_opts),
+        SSPRK3(
+            domain, "D", subcycling_options=subcycling_opts,
+            rk_formulation=RungeKuttaFormulation.linear
+        )
+    ]
+    transport_methods = [
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "D", advective_then_flux=True)
+    ]
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, spatial_methods=transport_methods
+        eqns, io, transported_fields, spatial_methods=transport_methods,
+        tau_values={'D': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #
@@ -114,7 +126,7 @@ def shallow_water_pangea(
     u0.project(uexpr)
     D0.interpolate(Dexpr)
 
-    Dbar = Function(D0.function_space()).assign(H)
+    Dbar = Function(D0.function_space()).interpolate(Dexpr)
     stepper.set_reference_profiles([('D', Dbar)])
 
     # ------------------------------------------------------------------------ #
