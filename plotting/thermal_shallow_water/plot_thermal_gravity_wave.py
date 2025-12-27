@@ -35,9 +35,11 @@ init_field_names = ['u', 'D', 'b']
 init_colour_schemes = ['Oranges', 'YlGnBu', 'PuRd_r']
 init_field_labels = [r'$|u|$ (m s$^{-1}$)', r'$D$ (m)', r'$b$ (m s$^{-2}$)']
 init_contours_to_remove = [None, None, None]
-init_contours = [np.linspace(0, 20, 9),
-                 np.linspace(1900, 3100, 13),
-                 np.linspace(9, 10, 11)]
+init_contours = [
+    np.linspace(0, 20, 9),
+    np.linspace(1800, 4800, 15),
+    np.linspace(9, 10, 11)
+]
 
 # ---------------------------------------------------------------------------- #
 # Final plot details
@@ -45,9 +47,11 @@ init_contours = [np.linspace(0, 20, 9),
 final_field_names = ['RelativeVorticity', 'D', 'b']
 final_colour_schemes = ['RdBu_r', 'YlGnBu', 'PuRd_r']
 final_field_labels = [r'$\zeta \ / $ s$^{-1}$', r'$D$ (m)', r'$b$ (m s$^{-2}$)']
-final_contours = [np.linspace(-1e-5, 1e-5, 11),
-                  np.linspace(1900, 3100, 13),
-                  np.linspace(9, 10, 11)]
+final_contours = [
+    np.linspace(-1.6e-5, 1.6e-5, 17),
+    np.linspace(1800, 4800, 15),
+    np.linspace(9, 10, 11)
+]
 final_contours_to_remove = [0.0, None, None]
 
 # ---------------------------------------------------------------------------- #

@@ -28,20 +28,25 @@ init_colour_schemes = ['Oranges', 'YlGnBu', 'cividis', 'PuRd_r']
 init_field_labels = [r'$|u|$ (m s$^{-1}$)', r'$D$ (m)',
                      r'$q_{cl}$ (kg kg$^{-1})$', r'$b_e$ (m s$^{-2}$)']
 init_contours_to_remove = [None, None, None, None]
-init_contours = [np.linspace(0.0, 20.0, 9),
-                 np.linspace(1800.0, 4800.0, 15),
-                 np.linspace(0.002, 0.02, 10),
-                 np.linspace(7.0, 8.5, 16)]
+init_contours = [
+    np.linspace(0.0, 20.0, 9),
+    np.linspace(1800.0, 4800.0, 15),
+    np.linspace(0.002, 0.02, 10),
+    np.linspace(7.0, 8.5, 16)
+]
 
 # ---------------------------------------------------------------------------- #
 # Final plot details
 # ---------------------------------------------------------------------------- #
-final_field_names = ['PartitionedCloud', 'b_e']
-final_colour_schemes = ['cividis', 'PuRd_r']
-final_field_labels = [r'$q_{cl}$ (kg kg$^{-1}$)', r'$b_e$ (m s$^{-2}$)']
-final_contours_to_remove = [None, None]
-final_contours = [np.linspace(0.002, 0.02, 10),
-                  np.linspace(7.0, 8.5, 16)]
+final_field_names = ['D', 'PartitionedCloud', 'b_e']
+final_colour_schemes = ['YlGnBu', 'cividis', 'PuRd_r']
+final_field_labels = [r'$D$ (m)', r'$q_{cl}$ (kg kg$^{-1}$)', r'$b_e$ (m s$^{-2}$)']
+final_contours_to_remove = [None, None, None]
+final_contours = [
+    np.linspace(1800.0, 4800.0, 15),
+    np.linspace(0.002, 0.02, 10),
+    np.linspace(7.0, 8.5, 16)
+]
 
 # ---------------------------------------------------------------------------- #
 # General options
@@ -139,7 +144,7 @@ plt.close()
 # ---------------------------------------------------------------------------- #
 # FINAL PLOTTING
 # ---------------------------------------------------------------------------- #
-fig, axarray = plt.subplots(1, 2, figsize=(16, 8), sharex='all', sharey='all')
+fig, axarray = plt.subplots(1, 3, figsize=(21, 6), sharex='all', sharey='all')
 time_idx = -1
 
 for i, (ax, field_name, colour_scheme, field_label, contour_to_remove, contours) in \
