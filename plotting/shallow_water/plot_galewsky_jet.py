@@ -17,7 +17,7 @@ from tomplot import (
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
 results_file_name = f'{abspath(dirname(__file__))}/../../results/galewsky_jet/field_output.nc'
-plot_stem = f'{abspath(dirname(__file__))}/../figures/galewsky_jet'
+plot_stem = f'{abspath(dirname(__file__))}/../../figures/shallow_water/galewsky_jet'
 
 # ---------------------------------------------------------------------------- #
 # Initial plot details
