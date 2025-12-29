@@ -96,7 +96,7 @@ def robert_bubble(
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
+        eqns, io, transported_fields, transport_methods, predictor='rho',
         tau_values={'rho': 1.0, 'theta': 1.0}
     )
 

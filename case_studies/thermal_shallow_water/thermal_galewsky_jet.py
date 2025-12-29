@@ -6,8 +6,7 @@ element discretisation for moist shallow water equations''.
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from firedrake import (
-    SpatialCoordinate, pi, conditional, exp, cos, assemble, dx, Constant,
-    Function, sqrt
+    SpatialCoordinate, pi, conditional, exp, cos, Constant, Function, sqrt
 )
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, xyz_vector_from_lonlatr,
@@ -102,7 +101,7 @@ def thermal_galewsky(
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
+        eqns, io, transported_fields, transport_methods, predictor='D',
         tau_values={'D': 1.0, 'b': 1.0}, reference_update_freq=10800.
     )
 
@@ -153,7 +152,7 @@ def thermal_galewsky(
     # Function for depth field in terms of u function
     def h_func(y):
         h_array = (
-            1.0/(g - db*np.cos(y))**0.5 * u_func(y) * radius / g
+            1.0/(g - db*np.cos(y))**0.5 * u_func(y) * radius
             * (2*Omega*np.sin(y) + u_func(y) * np.tan(y)/radius)
         )
 
@@ -169,13 +168,6 @@ def thermal_galewsky(
     # Obtain fields
     u0_field.project(uexpr)
     D0_field.interpolate(Dexpr)
-
-    # Adjust mean value of initial D
-    C = Function(D0_field.function_space()).assign(Constant(1.0))
-    area = assemble(C*dx)
-    Dmean = assemble(D0_field*dx)/area
-    D0_field -= Dmean
-    D0_field += Constant(mean_depth)
 
     # ------------------------------------------------------------------------ #
     # Apply perturbation

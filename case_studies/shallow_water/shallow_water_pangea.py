@@ -21,6 +21,7 @@ from gusto import (
 
 )
 import os.path as osp
+import petsc4py.PETSc
 
 shallow_water_pangea_defaults = {
     'ncells_per_edge': 24,     # number of cells per cubed sphere panel edge
@@ -64,10 +65,17 @@ def shallow_water_pangea(
         osp.abspath(osp.dirname(__file__)),
         f"utilities/pangea_C{ncells_per_edge}_chkpt.h5"
     )
-    with CheckpointFile(chkfile, 'r') as chk:
-        # Recover all the fields from the checkpoint
-        mesh = chk.load_mesh()
-        b_field = chk.load_function(mesh, 'topography')
+    try:
+        with CheckpointFile(chkfile, 'r') as chk:
+            # Recover all the fields from the checkpoint
+            mesh = chk.load_mesh()
+            b_field = chk.load_function(mesh, 'topography')
+    except petsc4py.PETSc.Error:
+        raise FileNotFoundError(
+            f"Could not find ancil file for pangea test case at {chkfile}. "
+            "Please run the utilities/create_pangea_dump.py script to generate "
+            "the required initial conditions for this resolution."
+        )
 
     domain = Domain(mesh, dt, hdiv_family, degree)
 
@@ -108,7 +116,7 @@ def shallow_water_pangea(
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, spatial_methods=transport_methods,
-        tau_values={'D': 1.0}, reference_update_freq=10800.
+        predictor='D', tau_values={'D': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #

@@ -121,7 +121,7 @@ def dry_baroclinic_sphere(
 
     # Time Stepper
     stepper = SemiImplicitQuasiNewton(
-        eqn, io, transported_fields, transport_methods,
+        eqn, io, transported_fields, transport_methods, predictor='rho',
         tau_values={'rho': 1.0, 'theta': 1.0}
     )
 

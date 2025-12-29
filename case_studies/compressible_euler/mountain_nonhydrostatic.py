@@ -141,7 +141,7 @@ def mountain_nonhydrostatic(
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
+        eqns, io, transported_fields, transport_methods, predictor='rho',
         alpha=alpha, tau_values={'rho': 1.0, 'theta': 1.0}
     )
 

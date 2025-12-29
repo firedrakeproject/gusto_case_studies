@@ -24,10 +24,10 @@ from gusto import (
 import numpy as np
 
 galewsky_jet_defaults = {
-    'ncells_per_edge': 48,     # number of cells per cubed sphere panel edge
-    'dt': 300.0,               # 5 minutes
+    'ncells_per_edge': 32,     # number of cells per cubed sphere panel edge
+    'dt': 600.0,               # 10 minutes
     'tmax': 6.*24.*60.*60.,    # 6 days
-    'dumpfreq': 288,           # once per day with default options
+    'dumpfreq': 144,           # once per day with default options
     'dirname': 'galewsky_jet'
 }
 
@@ -103,7 +103,7 @@ def galewsky_jet(
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, spatial_methods=transport_methods,
-        tau_values={'D': 1.0}, reference_update_freq=10800.
+        predictor='D', tau_values={'D': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #

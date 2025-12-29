@@ -110,7 +110,7 @@ def thermal_williamson_5(
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
+        eqns, io, transported_fields, transport_methods, predictor='D',
         tau_values={'D': 1.0, 'b': 1.0}, reference_update_freq=10800.
     )
 

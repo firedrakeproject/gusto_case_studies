@@ -27,9 +27,9 @@ from gusto import (
 moist_skamarock_klemp_defaults = {
     'ncolumns': 150,
     'nlayers': 10,
-    'dt': 60.0,
+    'dt': 6.0,
     'tmax': 3600.,
-    'dumpfreq': 25,
+    'dumpfreq': 100,
     'dirname': 'moist_skamarock_klemp'
 }
 
@@ -112,8 +112,9 @@ def moist_skamarock_klemp(
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
-        tau_values={'rho': 1.0, 'theta': 1.0}, physics_schemes=physics_schemes
+        eqns, io, transported_fields, transport_methods, predictor='rho',
+        tau_values={'rho': 1.0, 'theta': 1.0},
+        final_physics_schemes=physics_schemes
     )
 
     # ------------------------------------------------------------------------ #
@@ -178,6 +179,8 @@ def moist_skamarock_klemp(
     # Set existing ref variables (which define the pressure which is unchanged)
     rho_b = Function(Vr).assign(rho0)
     theta_b = Function(Vt).assign(theta0)
+    water_vb = Function(Vt).assign(water_v0)
+    water_cb = Function(Vt).assign(water_c0)
 
     rho_form = zeta * rho_h * theta0 * dxp - zeta * rho_b * theta_b * dxp
     rho_prob = NonlinearVariationalProblem(rho_form, rho_h)
@@ -217,6 +220,15 @@ def moist_skamarock_klemp(
                     break
 
     water_c0.assign(water_t - water_v0)
+
+    stepper.set_reference_profiles(
+        [
+            ('rho', rho_b),
+            ('theta', theta_b),
+            ('water_vapour', water_vb),
+            ('cloud_water', water_cb)
+        ]
+    )
 
     # ------------------------------------------------------------------------ #
     # Run

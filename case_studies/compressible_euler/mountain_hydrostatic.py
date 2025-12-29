@@ -119,7 +119,7 @@ def mountain_hydrostatic(
         dirname = f'hyd_switch_{dirname}'
 
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=True, dump_nc=True
+        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
     )
     diagnostic_fields = [
         ZComponent('u', space=domain.spaces('theta')),
@@ -142,7 +142,7 @@ def mountain_hydrostatic(
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
+        eqns, io, transported_fields, transport_methods, predictor='rho',
         alpha=alpha, tau_values={'rho': 1.0, 'theta': 1.0}
     )
 
