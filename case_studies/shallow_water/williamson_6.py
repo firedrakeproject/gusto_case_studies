@@ -1,7 +1,7 @@
 """
 The Rossby-Haurwitz Wave test case (6) of Williamson et al. 1992.
-A non-divergent wave pattern moves
-eastwardly maintaining the wave structure. The test case is on the sphere.
+A non-divergent wave pattern moves eastwardly, maintaining the wave structure.
+The test case is on the sphere.
 
 The setup implemented here uses the cubed sphere mesh with the degree 1 spaces.
 """
@@ -13,17 +13,16 @@ from firedrake import (
 )
 from gusto import (
     Domain, IO, OutputParameters, GeneralCubedSphereMesh, RelativeVorticity,
-    lonlatr_from_xyz,
-    ShallowWaterEquations, ShallowWaterParameters, SSPRK3, DGUpwind,
-    SemiImplicitQuasiNewton, ZonalComponent, MeridionalComponent
+    lonlatr_from_xyz, ShallowWaterEquations, ShallowWaterParameters, SSPRK3,
+    DGUpwind, SemiImplicitQuasiNewton, ZonalComponent, MeridionalComponent,
+    SubcyclingOptions, RungeKuttaFormulation
 )
-import numpy as np
 
 williamson_6_defaults = {
     'ncells_per_edge': 32,     # number of cells per cubed sphere panel edge
-    'dt': 300.0,               # 5 minutes
+    'dt': 900.0,               # 15 minutes
     'tmax': 14.*24.*60.*60.,   # 14 days
-    'dumpfreq': 288,           # once per day with default options
+    'dumpfreq': 96,            # once per day with default options
     'dirname': 'williamson_6'
 }
 
@@ -40,11 +39,11 @@ def williamson_6(
     # Test case parameters
     # ------------------------------------------------------------------------ #
 
-    radius = 6371220.      # radius of the planet, in m
-    K = Constant(7.847e-6) # Frequency parameter, in sec^-1
-    w = K                  # Set omega equal to K
-    R = 4.                 # Wave number 4
-    h0 = 8000.             # mean (and reference) depth, in m
+    radius = 6371220.       # radius of the planet, in m
+    K = Constant(7.847e-6)  # Frequency parameter, in s^{-1}
+    w = K                   # Set omega equal to K
+    R = 4.                  # Wave number 4
+    h0 = 8000.              # mean (and reference) depth, in m
 
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
@@ -64,11 +63,9 @@ def williamson_6(
 
     # Equation
     xyz = SpatialCoordinate(mesh)
-    parameters = ShallowWaterParameters(H=h0)
-    Omega = parameters.Omega
-    fexpr = 2*Omega*xyz[2]/radius
+    parameters = ShallowWaterParameters(mesh, H=h0)
     eqns = ShallowWaterEquations(
-        domain, parameters, fexpr=fexpr, u_transport_option=u_eqn_type
+        domain, parameters, u_transport_option=u_eqn_type
     )
 
     # I/O and diagnostics
@@ -81,12 +78,24 @@ def williamson_6(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    transported_fields = [SSPRK3(domain, "u"), SSPRK3(domain, "D")]
-    transport_methods = [DGUpwind(eqns, "u"), DGUpwind(eqns, "D")]
+    # Transport schemes
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
+    transported_fields = [
+        SSPRK3(domain, "u", subcycling_options=subcycling_opts),
+        SSPRK3(
+            domain, "D", subcycling_options=subcycling_opts,
+            rk_formulation=RungeKuttaFormulation.linear
+        )
+    ]
+    transport_methods = [
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "D", advective_then_flux=True)
+    ]
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, spatial_methods=transport_methods
+        eqns, io, transported_fields, transport_methods, predictor='D',
+        tau_values={'D': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #
@@ -102,19 +111,23 @@ def williamson_6(
 
     lon, lat, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
 
-    # ------------------------------------------------------------------------ #
-    # Obtain u and D
-    # ------------------------------------------------------------------------ #
-
-    # Intilising the velocity field from streamfunction
+    # Initialise the velocity field from streamfunction
     CG2 = FunctionSpace(mesh, 'CG', 2)
     psi = Function(CG2)
-    psiexpr = -radius**2 * w * sin(lat) + radius**2 * K * cos(lat)**R * sin(lat) * cos(R*lon)
+    psiexpr = (
+        -radius**2 * w * sin(lat)
+        + radius**2 * K * cos(lat)**R * sin(lat) * cos(R*lon)
+    )
     psi.interpolate(psiexpr)
     uexpr = domain.perp(grad(psi))
 
-    # Initilising the depth field
-    A = (w / 2) * (2 * Omega + w) * cos(lat)**2 + 0.25 * K**2 * cos(lat)**(2 * R) * ((R + 1) * cos(lat)**2 + (2 * R**2 - R - 2) - 2 * R**2 * cos(lat)**(-2))
+    # Depth field
+    A = (
+        (w / 2) * (2 * Omega + w) * cos(lat)**2
+        + 0.25 * K**2 * cos(lat)**(2 * R) * (
+            (R + 1) * cos(lat)**2 + (2*R**2 - R - 2) - 2*R**2 * cos(lat)**(-2)
+        )
+    )
     B_frac = (2 * (Omega + w) * K) / ((R + 1) * (R + 2))
     B = B_frac * cos(lat)**R * ((R**2 + 2 * R + 2) - (R + 1)**2 * cos(lat)**2)
     C = (1 / 4) * K**2 * cos(lat)**(2 * R) * ((R + 1)*cos(lat)**2 - (R + 2))
@@ -124,8 +137,8 @@ def williamson_6(
     u0_field.project(uexpr)
     D0_field.interpolate(Dexpr / g)
 
-    # Dbar is a background field for diagnostics
-    Dbar = Function(D0_field.function_space()).assign(h0)
+    # Set reference profiles
+    Dbar = Function(D0_field.function_space()).assign(D0_field)
     stepper.set_reference_profiles([('D', Dbar)])
 
     # ------------------------------------------------------------------------ #
