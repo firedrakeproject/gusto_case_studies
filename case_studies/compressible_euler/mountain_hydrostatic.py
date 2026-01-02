@@ -1,67 +1,66 @@
 """
-The 1 metre high mountain test case from Melvin et al, 2010:
+The hydrostatic 1 metre high mountain test case from Melvin et al, 2010:
 ``An inherently mass-conserving iterative semi-implicit semi-Lagrangian
 discretization of the non-hydrostatic vertical-slice equations.'', QJRMS.
 
-This test describes a wave over a 1m high mountain. The domain is smaller than
-that in the "non-hydrostatic mountain" case, so the solutions between the
-hydrostatic and non-hydrostatic equations should be different.
+This test describes a wave over a 1m high mountain in an isothermal atmosphere.
+The domain is larger than the "non-hydrostatic mountain" case, so the solutions
+between the hydrostatic and non-hydrostatic equations should be similar.
 
 The setup used here uses the order 1 finite elements.
 """
-from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from firedrake import (
-    as_vector, VectorFunctionSpace, PeriodicIntervalMesh, ExtrudedMesh,
-    SpatialCoordinate, exp, pi, cos, Function, conditional, Mesh, Constant
+    as_vector, VectorFunctionSpace, PeriodicIntervalMesh, ExtrudedMesh, sqrt,
+    SpatialCoordinate, exp, Function, Mesh, Constant
 )
 from gusto import (
-    Domain, CompressibleParameters, CompressibleSolver, logger,
-    CompressibleEulerEquations, HydrostaticCompressibleEulerEquations,
-    OutputParameters, IO, SSPRK3, DGUpwind, SemiImplicitQuasiNewton,
-    compressible_hydrostatic_balance, SpongeLayerParameters, Exner, ZComponent,
-    Perturbation, SUPGOptions, TrapeziumRule, MaxKernel, MinKernel,
+    Domain, IO, OutputParameters, SemiImplicitQuasiNewton, SSPRK3, DGUpwind,
+    TrapeziumRule, SUPGOptions, ZComponent, Perturbation, Temperature, Exner,
+    SpongeLayerParameters, CompressibleParameters, CompressibleSolver, logger,
+    compressible_hydrostatic_balance, MinKernel, MaxKernel,
+    HydrostaticCompressibleEulerEquations, CompressibleEulerEquations,
     hydrostatic_parameters
 )
 
-mountain_nonhydrostatic_defaults = {
-    'ncolumns': 90,
-    'nlayers': 35,
-    'dt': 5.0,
-    'tmax': 9000.,
-    'dumpfreq': 450,
-    'dirname': 'mountain_nonhydrostatic',
+mountain_hydrostatic_defaults = {
+    'ncolumns': 100,
+    'nlayers': 50,
+    'dt': 12.5,
+    'tmax': 15000.,
+    'dumpfreq': 600,
+    'dirname': 'mountain_hydrostatic',
     'hydrostatic': False
 }
 
 
-def mountain_nonhydrostatic(
-        ncolumns=mountain_nonhydrostatic_defaults['ncolumns'],
-        nlayers=mountain_nonhydrostatic_defaults['nlayers'],
-        dt=mountain_nonhydrostatic_defaults['dt'],
-        tmax=mountain_nonhydrostatic_defaults['tmax'],
-        dumpfreq=mountain_nonhydrostatic_defaults['dumpfreq'],
-        dirname=mountain_nonhydrostatic_defaults['dirname'],
-        hydrostatic=mountain_nonhydrostatic_defaults['hydrostatic']
+def mountain_hydrostatic(
+        ncolumns=mountain_hydrostatic_defaults['ncolumns'],
+        nlayers=mountain_hydrostatic_defaults['nlayers'],
+        dt=mountain_hydrostatic_defaults['dt'],
+        tmax=mountain_hydrostatic_defaults['tmax'],
+        dumpfreq=mountain_hydrostatic_defaults['dumpfreq'],
+        dirname=mountain_hydrostatic_defaults['dirname'],
+        hydrostatic=mountain_hydrostatic_defaults['hydrostatic']
 ):
 
     # ------------------------------------------------------------------------ #
     # Parameters for test case
     # ------------------------------------------------------------------------ #
 
-    domain_width = 144000.   # width of domain in x direction, in m
-    domain_height = 35000.   # height of model top, in m
-    a = 1000.                # scale width of mountain, in m
+    domain_width = 240000.   # width of domain in x direction, in m
+    domain_height = 50000.   # height of model top, in m
+    a = 10000.               # scale width of mountain, in m
     hm = 1.                  # height of mountain, in m
-    zh = 5000.               # height at which mesh is no longer distorted, in m
-    Tsurf = 300.             # temperature of surface, in K
-    initial_wind = 10.0      # initial horizontal wind, in m/s
-    sponge_depth = 10000.0   # depth of sponge layer, in m
+    Tsurf = 250.             # temperature of surface, in K
+    initial_wind = 20.0      # initial horizontal wind, in m/s
+    sponge_depth = 20000.0   # depth of sponge layer, in m
     g = 9.80665              # acceleration due to gravity, in m/s^2
     cp = 1004.               # specific heat capacity at constant pressure
-    mu_dt = 0.15             # parameter for strength of sponge layer, no units
+    mu_dt = 0.3              # parameter for strength of sponge layer, no units
     exner_surf = 1.0         # maximum value of Exner pressure at surface
-    max_iterations = 10      # maximum number of hydrostatic balance iterations
+    max_inner_iters = 10     # maximum number of hydrostatic balance iterations
     tolerance = 1e-7         # tolerance for hydrostatic balance iteration
 
     # ------------------------------------------------------------------------ #
@@ -70,7 +69,7 @@ def mountain_nonhydrostatic(
 
     element_order = 1
     u_eqn_type = 'vector_invariant_form'
-    alpha = 0.5
+    alpha = 0.55  # Necessary to absorb grid scale waves
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -89,7 +88,7 @@ def mountain_nonhydrostatic(
     x, z = SpatialCoordinate(ext_mesh)
     zs = hm * a**2 / ((x - xc)**2 + a**2)
     xexpr = as_vector(
-        [x, conditional(z < zh, z + cos(0.5 * pi * z / zh)**6 * zs, z)]
+        [x, z + ((domain_height - z) / domain_height) * zs]
     )
 
     # Make new mesh
@@ -116,14 +115,15 @@ def mountain_nonhydrostatic(
 
     # I/O
     # Adjust default directory name
-    if hydrostatic and dirname == mountain_nonhydrostatic_defaults['dirname']:
+    if hydrostatic and dirname == mountain_hydrostatic_defaults['dirname']:
         dirname = f'hyd_switch_{dirname}'
 
     output = OutputParameters(
-        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=False, dump_nc=True
+        dirname=dirname, dumpfreq=dumpfreq, dump_vtus=True, dump_nc=True
     )
     diagnostic_fields = [
-        Exner(parameters), ZComponent('u'), Perturbation('theta')
+        ZComponent('u', space=domain.spaces('theta')),
+        Perturbation('theta'), Exner(parameters), Temperature(eqns)
     ]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
@@ -167,22 +167,29 @@ def mountain_nonhydrostatic(
     Vt = domain.spaces("theta")
     Vr = domain.spaces("DG")
 
-    # Thermodynamic constants required for setting initial conditions
-    # and reference profiles
-    N = parameters.N
-
-    # N^2 = (g/theta)dtheta/dz => dtheta/dz = theta N^2g => theta=theta_0exp(N^2gz)
+    # Isothermal initial conditions, means we don't know initial theta
     x, z = SpatialCoordinate(mesh)
-    thetab = Tsurf*exp(N**2*z/g)
-    theta_b = Function(Vt).interpolate(thetab)
 
     # Calculate hydrostatic exner
     exner = Function(Vr)
     rho_b = Function(Vr)
+    theta_b = Function(Vt)
 
     # Set up kernels to evaluate global minima and maxima of fields
     min_kernel = MinKernel()
     max_kernel = MaxKernel()
+
+    # First guess for theta -- should be pretty good as comes from hydrostatic
+    # balance
+    # dp/dz = - rho*g
+    #       = - p*g/(Rd*T)
+    # p = p0 exp[-g*z/(Rd*T)]
+    # theta = T*(p0/p)**-(Rd/cp)
+    # theta = T*exp[g*z/(cp*T)]
+    g = parameters.g
+    cp = parameters.cp
+    N = g / sqrt(cp*Tsurf)
+    theta_b.interpolate(Tsurf*exp(N**2*z/g))
 
     # First solve hydrostatic balance that gives Exner = 1 at bottom boundary
     # This gives us a guess for the top boundary condition
@@ -207,7 +214,7 @@ def mountain_nonhydrostatic(
     # a maximum value of 1.0 at the surface
     lower_top_guess = 0.9*top_value
     upper_top_guess = 1.2*top_value
-    for i in range(max_iterations):
+    for i in range(max_inner_iters):
         # If max bottom Exner value is equal to desired value, stop iteration
         if abs(max_bottom_value - exner_surf) < tolerance:
             break
@@ -217,8 +224,8 @@ def mountain_nonhydrostatic(
         top_boundary.assign(top_guess)
 
         logger.info(
-            f'Solving hydrostatic balance iteration {i}, with top Exner value '
-            + f'of {top_guess}'
+            f'Solving hydrostatic balance iteration {i}, with top '
+            + f'Exner value of {top_guess}'
         )
 
         compressible_hydrostatic_balance(
@@ -268,37 +275,37 @@ if __name__ == "__main__":
         '--ncolumns',
         help="The number of columns in the vertical slice mesh.",
         type=int,
-        default=mountain_nonhydrostatic_defaults['ncolumns']
+        default=mountain_hydrostatic_defaults['ncolumns']
     )
     parser.add_argument(
         '--nlayers',
         help="The number of layers for the mesh.",
         type=int,
-        default=mountain_nonhydrostatic_defaults['nlayers']
+        default=mountain_hydrostatic_defaults['nlayers']
     )
     parser.add_argument(
         '--dt',
         help="The time step in seconds.",
         type=float,
-        default=mountain_nonhydrostatic_defaults['dt']
+        default=mountain_hydrostatic_defaults['dt']
     )
     parser.add_argument(
         "--tmax",
         help="The end time for the simulation in seconds.",
         type=float,
-        default=mountain_nonhydrostatic_defaults['tmax']
+        default=mountain_hydrostatic_defaults['tmax']
     )
     parser.add_argument(
         '--dumpfreq',
         help="The frequency at which to dump field output.",
         type=int,
-        default=mountain_nonhydrostatic_defaults['dumpfreq']
+        default=mountain_hydrostatic_defaults['dumpfreq']
     )
     parser.add_argument(
         '--dirname',
         help="The name of the directory to write to.",
         type=str,
-        default=mountain_nonhydrostatic_defaults['dirname']
+        default=mountain_hydrostatic_defaults['dirname']
     )
     parser.add_argument(
         '--hydrostatic',
@@ -308,8 +315,8 @@ if __name__ == "__main__":
             + "equations."
         ),
         action="store_true",
-        default=mountain_nonhydrostatic_defaults['hydrostatic']
+        default=mountain_hydrostatic_defaults['hydrostatic']
     )
     args, unknown = parser.parse_known_args()
 
-    mountain_nonhydrostatic(**vars(args))
+    mountain_hydrostatic(**vars(args))

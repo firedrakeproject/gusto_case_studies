@@ -1,8 +1,8 @@
 """
-Plots the non-hydrostatic mountain test case.
+Plots the hydrostatic mountain test case.
 
 This plots:
-(a) w @ t = 9000 s, (b) theta @ t = 9000 s
+(a) w @ t = 15000 s, (b) theta @ t = 15000 s
 """
 from os.path import abspath, dirname
 import matplotlib.pyplot as plt
@@ -15,7 +15,7 @@ from tomplot import (
     extract_gusto_coords, extract_gusto_field, reshape_gusto_data
 )
 
-test = 'mountain_nonhydrostatic'
+test = 'mountain_hydrostatic'
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots
@@ -35,23 +35,23 @@ final_field_labels = [
     r'$w$ (m s$^{-1}$)', r'$\Delta\theta$ (K)'
 ]
 final_contours = [
-    np.linspace(-0.04, 0.04, 21), np.linspace(-0.025, 0.025, 21),
-    np.linspace(-0.04, 0.04, 21), np.linspace(-0.025, 0.025, 21)
+    np.linspace(-0.012, 0.012, 13), np.linspace(-0.14, 0.14, 15),
+    np.linspace(-0.004, 0.004, 21), np.linspace(-0.02, 0.02, 21)
 ]
 
 # ---------------------------------------------------------------------------- #
 # Initial plot details
 # ---------------------------------------------------------------------------- #
-initial_field_names = ['Exner', 'theta']
-initial_colour_schemes = ['PuBu', 'Reds']
-initial_field_labels = [r'$\Pi$', r'$\theta$ (K)']
+initial_field_names = ['Exner', 'theta', 'Temperature']
+initial_colour_schemes = ['PuBu', 'Reds', 'RdYlBu_r']
+initial_field_labels = [r'$\Pi$', r'$\theta$ (K)', r'$T$ (K)']
 
 # ---------------------------------------------------------------------------- #
 # General options
 # ---------------------------------------------------------------------------- #
 contour_method = 'contour'  # Need to use this method to show mountains!
-xlims = [0., 144.]
-ylims = [0., 35.]
+xlims = [0., 240.]
+ylims = [0., 50.]
 
 # Things that are likely the same for all plots --------------------------------
 set_tomplot_style()
@@ -61,7 +61,7 @@ data_file = Dataset(results_file_name, 'r')
 # INITIAL PLOTTING
 # ---------------------------------------------------------------------------- #
 
-fig, axarray = plt.subplots(1, 2, figsize=(18, 6), sharex='all', sharey='all')
+fig, axarray = plt.subplots(1, 3, figsize=(18, 6), sharex='all', sharey='all')
 time_idx = 0
 
 for i, (ax, field_name, colour_scheme, field_label) in \
@@ -78,7 +78,10 @@ for i, (ax, field_name, colour_scheme, field_label) in \
     field_data, coords_X, coords_Y = \
         reshape_gusto_data(field_data, coords_X, coords_Y)
 
-    contours = tomplot_contours(field_data)
+    if field_name == 'Temperature':
+        contours = np.linspace(250.0, 266.0, 9)
+    else:
+        contours = tomplot_contours(field_data)
     cmap, lines = tomplot_cmap(contours, colour_scheme)
 
     # Plot data ----------------------------------------------------------------
@@ -113,7 +116,7 @@ plt.close()
 # ---------------------------------------------------------------------------- #
 # FINAL PLOTTING
 # ---------------------------------------------------------------------------- #
-xlims_zoom = [60., 95.]
+xlims_zoom = [80., 160.]
 ylims_zoom = [0., 12.]
 
 fig, axarray = plt.subplots(2, 2, figsize=(18, 12), sharex='row', sharey='row')

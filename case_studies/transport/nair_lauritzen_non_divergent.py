@@ -17,8 +17,9 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     exp, cos, sin, conditional, SpatialCoordinate, pi, min_value, grad,
-    Function, Projector, Interpolator
+    Function, Projector, assemble
 )
+from firedrake.__future__ import interpolate
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, IO, lonlatr_from_xyz, SSPRK3,
     DGUpwind, PrescribedTransport, GeneralIcosahedralSphereMesh,
@@ -114,12 +115,12 @@ def nair_lauritzen_non_divergent(
 
     u_expr = domain.perp(grad(psi))
 
-    psi_interpolator = Interpolator(psi_expr, psi)
+    psi_interpolator = lambda: assemble(interpolate(psi_expr, H1), tensor=psi)
     u_projector = Projector(u_expr, u0)
 
     # Set up the non-divergent, time-varying, velocity field
     def apply_prescribed_velocity(t):
-        psi_interpolator.interpolate()
+        psi_interpolator()
         u_projector.project()
         return
 

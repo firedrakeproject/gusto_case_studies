@@ -76,19 +76,19 @@ def terminator_toy(
         transport_eqn=TransportEquationType.conservative
     )
 
-    X = ActiveTracer(
-        name='X', space='DG',
+    Y = ActiveTracer(
+        name='Y', space='DG',
         variable_type=TracerVariableType.mixing_ratio,
         transport_eqn=TransportEquationType.advective
     )
 
-    X2 = ActiveTracer(
-        name='X2', space='DG',
+    Y2 = ActiveTracer(
+        name='Y2', space='DG',
         variable_type=TracerVariableType.mixing_ratio,
         transport_eqn=TransportEquationType.advective
     )
 
-    tracers = [rho_d, X, X2]
+    tracers = [rho_d, Y, Y2]
 
     # Equation
     V = domain.spaces("HDiv")
@@ -100,10 +100,10 @@ def terminator_toy(
     )
 
     # Define intermediate sums to be able to use the TracerDensity diagnostic
-    X_plus_X2 = Sum('X', 'X2')
-    X_plus_X2_plus_X2 = Sum('X_plus_X2', 'X2')
-    tracer_diagnostic = TracerDensity('X_plus_X2_plus_X2', 'rho_d')
-    diagnostic_fields = [X_plus_X2, X_plus_X2_plus_X2, tracer_diagnostic]
+    Y_plus_Y2 = Sum('Y', 'Y2')
+    Y_plus_Y2_plus_Y2 = Sum('Y_plus_Y2', 'Y2')
+    tracer_diagnostic = TracerDensity('Y_plus_Y2_plus_Y2', 'rho_d')
+    diagnostic_fields = [Y_plus_Y2, Y_plus_Y2_plus_Y2, tracer_diagnostic]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Details of transport
@@ -111,14 +111,14 @@ def terminator_toy(
     limiter_space = domain.spaces('DG')
     sublimiters = {
         'rho_d': DG1Limiter(limiter_space),
-        'X': DG1Limiter(limiter_space),
-        'X2': DG1Limiter(limiter_space)
+        'Y': DG1Limiter(limiter_space),
+        'Y2': DG1Limiter(limiter_space)
     }
     MixedLimiter = MixedFSLimiter(eqn, sublimiters)
 
     transport_scheme = SSPRK3(domain, limiter=MixedLimiter)
     transport_method = [
-        DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'X'), DGUpwind(eqn, 'X2')
+        DGUpwind(eqn, 'rho_d'), DGUpwind(eqn, 'Y'), DGUpwind(eqn, 'Y2')
     ]
 
     # Physics scheme --------------------------------------------------------- #
@@ -132,7 +132,7 @@ def terminator_toy(
     terminator_stepper = BackwardEuler(domain)
 
     physics_schemes = [
-        (TerminatorToy(eqn, k1=k1, k2=k2, species1_name='X', species2_name='X2'),
+        (TerminatorToy(eqn, k1=k1, k2=k2, species1_name='Y', species2_name='Y2'),
          terminator_stepper)
     ]
 
@@ -163,27 +163,27 @@ def terminator_toy(
 
     stepper.setup_prescribed_expr(u_t)
 
-    X, Y, Z = xyz
-    X1, Y1, Z1 = xyz_from_lonlatr(lamda_c1, theta_c1, radius)
-    X2, Y2, Z2 = xyz_from_lonlatr(lamda_c2, theta_c2, radius)
+    x, y, z = xyz
+    x1, y1, z1 = xyz_from_lonlatr(lamda_c1, theta_c1, radius)
+    x2, y2, z2 = xyz_from_lonlatr(lamda_c2, theta_c2, radius)
 
     # The initial condition for the density is two Gaussians
-    g1 = exp(-(b0/(radius**2))*((X-X1)**2 + (Y-Y1)**2 + (Z-Z1)**2))
-    g2 = exp(-(b0/(radius**2))*((X-X2)**2 + (Y-Y2)**2 + (Z-Z2)**2))
+    g1 = exp(-(b0/(radius**2))*((x-x1)**2 + (y-y1)**2 + (z-z1)**2))
+    g2 = exp(-(b0/(radius**2))*((x-x2)**2 + (y-y2)**2 + (z-z2)**2))
     rho_expr = g1 + g2
 
-    X_T_0 = 4e-6
+    Y_T_0 = 4e-6
     r = k1/(4*k2)
-    D_val = sqrt(r**2 + 2*X_T_0*r)
+    D_val = sqrt(r**2 + 2*Y_T_0*r)
 
     # Initial condition for each species
-    X_0 = D_val - r
-    X2_0 = 0.5*(X_T_0 - D_val + r)
+    Y_0 = D_val - r
+    Y2_0 = 0.5*(Y_T_0 - D_val + r)
 
     # Initial conditions
     stepper.fields("rho_d").interpolate(rho_expr)
-    stepper.fields("X").interpolate(X_0)
-    stepper.fields("X2").interpolate(X2_0)
+    stepper.fields("Y").interpolate(Y_0)
+    stepper.fields("Y2").interpolate(Y2_0)
 
     # ------------------------------------------------------------------------ #
     # Run
