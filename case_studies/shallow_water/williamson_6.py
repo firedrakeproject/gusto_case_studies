@@ -78,7 +78,6 @@ def williamson_6(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    # Transport schemes
     subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
     transported_fields = [
         SSPRK3(domain, "u", subcycling_options=subcycling_opts),
