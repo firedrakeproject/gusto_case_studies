@@ -143,6 +143,7 @@ def test_hyd_switch_skamarock_klemp_hydrostatic():
         hydrostatic=True
     )
 
+
 def test_travelling_vortex_0_1():
     travelling_vortex(
         ncolumns=5,
@@ -155,6 +156,7 @@ def test_travelling_vortex_0_1():
         vorder=1,
         direction='horizontal'
     )
+
 
 def test_travelling_vortex_1_0():
     travelling_vortex(
