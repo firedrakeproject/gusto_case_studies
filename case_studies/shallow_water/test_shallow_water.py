@@ -23,6 +23,7 @@ def test_shallow_water_pangea():
         dirname='pytest_shallow_water_pangea'
     )
 
+
 def test_williamson_6():
     williamson_6(
         ncells_per_edge=4,
@@ -31,6 +32,7 @@ def test_williamson_6():
         dumpfreq=2,
         dirname='pytest_williamson_6'
     )
+
 
 def test_create_pangea_dump():
     create_pangea_dump(
