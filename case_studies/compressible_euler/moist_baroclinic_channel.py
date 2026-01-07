@@ -127,7 +127,8 @@ def moist_baroclinic_channel(
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods, predictor='rho',
-        tau_values={'rho': 1.0, 'theta': 1.0}, physics_schemes=physics_schemes
+        tau_values={'rho': 1.0, 'theta': 1.0},
+        final_physics_schemes=physics_schemes
     )
 
     # ------------------------------------------------------------------------ #
