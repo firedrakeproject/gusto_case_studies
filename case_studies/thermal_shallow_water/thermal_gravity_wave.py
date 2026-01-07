@@ -13,7 +13,7 @@ from firedrake import (
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, ShallowWaterParameters,
     ThermalShallowWaterEquations, lonlatr_from_xyz, SubcyclingOptions,
-    RungeKuttaFormulation, SSPRK3, ThermalSWSolver, MeridionalComponent,
+    RungeKuttaFormulation, SSPRK3, MeridionalComponent,
     SemiImplicitQuasiNewton, xyz_vector_from_lonlatr, ZonalComponent,
     GeneralIcosahedralSphereMesh, RelativeVorticity
 )
@@ -78,9 +78,6 @@ def thermal_gw(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport
-    transport_methods = [
-        DGUpwind(eqns, field_name) for field_name in eqns.field_names
-    ]
     subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
     transported_fields = [
         SSPRK3(domain, "u", subcycling_options=subcycling_opts),
@@ -88,19 +85,21 @@ def thermal_gw(
             domain, "D", subcycling_options=subcycling_opts,
             rk_formulation=RungeKuttaFormulation.linear
         ),
-        SSPRK3(domain, "b", subcycling_options=subcycling_opts)
+        SSPRK3(domain, "b", subcycling_options=subcycling_opts),
     ]
-
-    tau_values = {'D': 1.0, 'b': 1.0}
-    linear_solver = ThermalSWSolver(eqns, tau_values=tau_values)
+    transport_methods = [
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "D", advective_then_flux=True),
+        DGUpwind(eqns, "b"),
+    ]
 
     # ------------------------------------------------------------------------ #
     # Timestepper
     # ------------------------------------------------------------------------ #
 
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, reference_update_freq=10800.
+        eqns, io, transported_fields, transport_methods, predictor='D',
+        tau_values={'D': 1.0, 'b': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #

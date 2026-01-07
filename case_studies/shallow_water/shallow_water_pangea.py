@@ -16,10 +16,12 @@ from firedrake import SpatialCoordinate, as_vector, CheckpointFile, Function
 from gusto import (
     Domain, IO, OutputParameters, Sum, RelativeVorticity, ZonalComponent,
     MeridionalComponent, ShallowWaterEquations, ShallowWaterParameters,
-    SSPRK3, DGUpwind, SemiImplicitQuasiNewton
+    SSPRK3, DGUpwind, SemiImplicitQuasiNewton, RungeKuttaFormulation,
+    SubcyclingOptions
 
 )
 import os.path as osp
+import petsc4py.PETSc
 
 shallow_water_pangea_defaults = {
     'ncells_per_edge': 24,     # number of cells per cubed sphere panel edge
@@ -63,10 +65,17 @@ def shallow_water_pangea(
         osp.abspath(osp.dirname(__file__)),
         f"utilities/pangea_C{ncells_per_edge}_chkpt.h5"
     )
-    with CheckpointFile(chkfile, 'r') as chk:
-        # Recover all the fields from the checkpoint
-        mesh = chk.load_mesh()
-        b_field = chk.load_function(mesh, 'topography')
+    try:
+        with CheckpointFile(chkfile, 'r') as chk:
+            # Recover all the fields from the checkpoint
+            mesh = chk.load_mesh()
+            b_field = chk.load_function(mesh, 'topography')
+    except petsc4py.PETSc.Error:
+        raise FileNotFoundError(
+            f"Could not find ancil file for pangea test case at {chkfile}. "
+            "Please run the utilities/create_pangea_dump.py script to generate "
+            "the required initial conditions for this resolution."
+        )
 
     domain = Domain(mesh, dt, hdiv_family, degree)
 
@@ -91,12 +100,23 @@ def shallow_water_pangea(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    transported_fields = [SSPRK3(domain, "u"), SSPRK3(domain, "D")]
-    transport_methods = [DGUpwind(eqns, "u"), DGUpwind(eqns, "D")]
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
+    transported_fields = [
+        SSPRK3(domain, "u", subcycling_options=subcycling_opts),
+        SSPRK3(
+            domain, "D", subcycling_options=subcycling_opts,
+            rk_formulation=RungeKuttaFormulation.linear
+        )
+    ]
+    transport_methods = [
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "D", advective_then_flux=True)
+    ]
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, spatial_methods=transport_methods
+        eqns, io, transported_fields, spatial_methods=transport_methods,
+        predictor='D', tau_values={'D': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #
@@ -114,7 +134,7 @@ def shallow_water_pangea(
     u0.project(uexpr)
     D0.interpolate(Dexpr)
 
-    Dbar = Function(D0.function_space()).assign(H)
+    Dbar = Function(D0.function_space()).interpolate(Dexpr)
     stepper.set_reference_profiles([('D', Dbar)])
 
     # ------------------------------------------------------------------------ #

@@ -15,8 +15,8 @@ from firedrake import (
     Function, sqrt, conditional, as_vector
 )
 from gusto import (
-    Domain, CompressibleParameters, CompressibleSolver,
-    CompressibleEulerEquations, OutputParameters, IO, SSPRK3, TrapeziumRule,
+    Domain, CompressibleParameters, RungeKuttaFormulation,
+    CompressibleEulerEquations, OutputParameters, IO, SSPRK3,
     DGUpwind, SemiImplicitQuasiNewton, compressible_hydrostatic_balance,
     Perturbation, EmbeddedDGOptions
 )
@@ -84,24 +84,20 @@ def robert_bubble(
     # Transport schemes
     theta_opts = EmbeddedDGOptions()
     transported_fields = [
-        TrapeziumRule(domain, "u"),
-        SSPRK3(domain, "rho"),
+        SSPRK3(domain, "u"),
+        SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
         SSPRK3(domain, "theta", options=theta_opts)
     ]
-
     transport_methods = [
         DGUpwind(eqns, "u"),
-        DGUpwind(eqns, "rho"),
+        DGUpwind(eqns, "rho", advective_then_flux=True),
         DGUpwind(eqns, "theta")
     ]
 
-    # Linear solver
-    linear_solver = CompressibleSolver(eqns)
-
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, num_outer=4, num_inner=1
+        eqns, io, transported_fields, transport_methods, predictor='rho',
+        tau_values={'rho': 1.0, 'theta': 1.0}
     )
 
     # ------------------------------------------------------------------------ #
