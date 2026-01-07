@@ -16,10 +16,11 @@ from firedrake import (
     NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction
 )
 from gusto import (
-    Domain, GeneralCubedSphereMesh, CompressibleParameters, CompressibleSolver,
+    Domain, GeneralCubedSphereMesh, CompressibleParameters,
     CompressibleEulerEquations, OutputParameters, IO, EmbeddedDGOptions, SSPRK3,
     DGUpwind, logger, SemiImplicitQuasiNewton, lonlatr_from_xyz,
-    xyz_vector_from_lonlatr, compressible_hydrostatic_balance
+    xyz_vector_from_lonlatr, compressible_hydrostatic_balance,
+    RungeKuttaFormulation
 )
 
 dry_baroclinic_sphere_defaults = {
@@ -109,23 +110,19 @@ def dry_baroclinic_sphere(
     theta_opts = EmbeddedDGOptions()
     transported_fields = [
         SSPRK3(domain, "u"),
-        SSPRK3(domain, "rho"),
+        SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
         SSPRK3(domain, "theta", options=theta_opts)
     ]
     transport_methods = [
         DGUpwind(eqn, "u"),
-        DGUpwind(eqn, "rho"),
+        DGUpwind(eqn, "rho", advective_then_flux=True),
         DGUpwind(eqn, "theta")
     ]
 
-    # Linear Solver
-    linear_solver = CompressibleSolver(eqn)
-
     # Time Stepper
-    # NB: unsure if this runs stably with num_outer=2, num_inner=2
     stepper = SemiImplicitQuasiNewton(
-        eqn, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, num_outer=4, num_inner=1
+        eqn, io, transported_fields, transport_methods, predictor='rho',
+        tau_values={'rho': 1.0, 'theta': 1.0}
     )
 
     # ------------------------------------------------------------------------ #

@@ -22,7 +22,7 @@ test = 'mountain_hydrostatic'
 # ---------------------------------------------------------------------------- #
 # When copying this example these paths need editing, which will usually involve
 # removing the abspath part to set directory paths relative to this file
-results_file_name = f'{abspath(dirname(__file__))}/../../../results/{test}/field_output.nc'
+results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_output.nc'
 plot_stem = f'{abspath(dirname(__file__))}/../../figures/compressible_euler/{test}'
 
 # ---------------------------------------------------------------------------- #

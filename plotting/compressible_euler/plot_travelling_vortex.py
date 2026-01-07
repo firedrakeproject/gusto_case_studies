@@ -1,8 +1,8 @@
 """
-Plots the Robert bubble test case.
+Plots the travelling vortex test case.
 
 This plots:
-(a) theta perturbation @ t = 0 s, (b) theta perturbation @ t = 600 s
+(a) theta @ t = 0 s, (b) theta @ t = 100 s
 """
 from os.path import abspath, dirname
 import matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ from tomplot import (
     extract_gusto_field
 )
 
-test = 'robert_bubble'
+test = 'travelling_vortex_h1_v1_diagonal'
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots
@@ -27,19 +27,19 @@ plot_stem = f'{abspath(dirname(__file__))}/../../figures/compressible_euler/{tes
 # ---------------------------------------------------------------------------- #
 # Plot details
 # ---------------------------------------------------------------------------- #
-field_names = ['theta_perturbation', 'theta_perturbation']
+field_names = ['theta', 'theta']
 time_idxs = [0, -1]
 cbars = [False, True]
 
 # ---------------------------------------------------------------------------- #
 # General options
 # ---------------------------------------------------------------------------- #
-contours = np.linspace(-1.0, 1.0, 21)
+contours = np.linspace(-0.2, 0.2, 21)
 colour_scheme = 'RdBu_r'
 field_label = r'$\Delta \theta$ (K)'
 contour_method = 'tricontour'
-xlims = [0., 1.]
-ylims = [0., 1.]
+xlims = [0., 10.]
+ylims = [0., 10.]
 
 # Things that are likely the same for all plots --------------------------------
 set_tomplot_style()

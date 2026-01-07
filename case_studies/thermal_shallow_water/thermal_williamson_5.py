@@ -14,7 +14,7 @@ from gusto import (
     ShallowWaterParameters, ThermalShallowWaterEquations, Sum,
     lonlatr_from_xyz, GeneralIcosahedralSphereMesh, RelativeVorticity,
     ZonalComponent, MeridionalComponent, RungeKuttaFormulation, SSPRK3,
-    SemiImplicitQuasiNewton, ThermalSWSolver
+    SemiImplicitQuasiNewton
 )
 
 thermal_williamson_5_defaults = {
@@ -56,7 +56,6 @@ def thermal_williamson_5(
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
 
-    alpha = 0.5
     element_order = 1
     u_eqn_type = 'vector_advection_form'
 
@@ -109,14 +108,10 @@ def thermal_williamson_5(
         DGUpwind(eqns, "b"),
     ]
 
-    # Linear solver
-    linear_solver = ThermalSWSolver(eqns, alpha=alpha)
-
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, alpha=alpha,
-        num_outer=2, num_inner=2
+        eqns, io, transported_fields, transport_methods, predictor='D',
+        tau_values={'D': 1.0, 'b': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #
@@ -151,7 +146,7 @@ def thermal_williamson_5(
     b0.interpolate(bexpr)
 
     # Set reference profiles
-    Dbar = Function(D0.function_space()).assign(mean_depth)
+    Dbar = Function(D0.function_space()).interpolate(Dexpr)
     bbar = Function(b0.function_space()).interpolate(bexpr)
     stepper.set_reference_profiles([('D', Dbar), ('b', bbar)])
 

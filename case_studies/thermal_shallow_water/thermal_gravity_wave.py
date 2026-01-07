@@ -1,36 +1,38 @@
 """
-A gravity wave on the sphere, solved with the moist thermal shallow water
-equations. The initial conditions are saturated and cloudy everywhere.
+A gravity wave on the sphere, solved with the thermal shallow water equations.
+The initial conditions are formed by adding a perturbation to the thermal
+solid-body rotation test case of  Zerroukat & Allen, 2015:
+``A moist Boussinesq shallow water equations set for testing atmospheric
+models'', JCP.
 """
 
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from firedrake import (
-    SpatialCoordinate, pi, sqrt, min_value, cos, Constant, Function, exp, sin
+    SpatialCoordinate, pi, sqrt, min_value, cos, Function, sin
 )
 from gusto import (
     Domain, IO, OutputParameters, DGUpwind, ShallowWaterParameters,
     ThermalShallowWaterEquations, lonlatr_from_xyz, SubcyclingOptions,
-    RungeKuttaFormulation, SSPRK3, ThermalSWSolver, MeridionalComponent,
-    SemiImplicitQuasiNewton, ForwardEuler, WaterVapour, CloudWater,
-    xyz_vector_from_lonlatr, SWSaturationAdjustment, ZonalComponent,
-    GeneralIcosahedralSphereMesh
+    RungeKuttaFormulation, SSPRK3, MeridionalComponent,
+    SemiImplicitQuasiNewton, xyz_vector_from_lonlatr, ZonalComponent,
+    GeneralIcosahedralSphereMesh, RelativeVorticity
 )
 
-moist_thermal_gw_defaults = {
-    'ncells_per_edge': 16,     # number of cells per icosahedron edge
-    'dt': 900.0,               # 15 minutes
-    'tmax': 5.*24.*60.*60.,    # 5 days
-    'dumpfreq': 96,            # dump once per day
-    'dirname': 'moist_thermal_gw'
+thermal_gw_defaults = {
+    'ncells_per_edge': 16,         # number of cells per icosahedron edge
+    'dt': 900.0,                   # 15 minutes
+    'tmax': 5.*24.*60.*60.,        # 5 days
+    'dumpfreq': 96,                # dump once per day
+    'dirname': 'thermal_gw'
 }
 
 
-def moist_thermal_gw(
-        ncells_per_edge=moist_thermal_gw_defaults['ncells_per_edge'],
-        dt=moist_thermal_gw_defaults['dt'],
-        tmax=moist_thermal_gw_defaults['tmax'],
-        dumpfreq=moist_thermal_gw_defaults['dumpfreq'],
-        dirname=moist_thermal_gw_defaults['dirname']
+def thermal_gw(
+        ncells_per_edge=thermal_gw_defaults['ncells_per_edge'],
+        dt=thermal_gw_defaults['dt'],
+        tmax=thermal_gw_defaults['tmax'],
+        dumpfreq=thermal_gw_defaults['dumpfreq'],
+        dirname=thermal_gw_defaults['dirname']
 ):
 
     # ------------------------------------------------------------------------ #
@@ -38,16 +40,14 @@ def moist_thermal_gw(
     # ------------------------------------------------------------------------ #
 
     radius = 6371220.           # planetary radius (m)
-    mean_depth = 5960.          # reference depth (m)
-    q0 = 0.0115                 # saturation curve coefficient (kg/kg)
-    beta2 = 9.80616*10          # thermal feedback coefficient (m/s^2)
-    nu = 1.5                    # dimensionless parameter in saturation curve
     R0 = pi/9.                  # radius of perturbation (rad)
     lamda_c = -pi/2.            # longitudinal centre of perturbation (rad)
     phi_c = pi/6.               # latitudinal centre of perturbation (rad)
     phi_0 = 3.0e4               # scale factor for poleward buoyancy gradient
     epsilon = 1/300             # linear air expansion coeff (1/K)
     u_max = 20.                 # max amplitude of the zonal wind (m/s)
+    g = 9.80616                 # acceleration due to gravity (m/s^2)
+    mean_depth = phi_0/g        # reference depth (m)
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -60,48 +60,24 @@ def moist_thermal_gw(
     xyz = SpatialCoordinate(mesh)
 
     # Equation parameters
-    parameters = ShallowWaterParameters(mesh, H=mean_depth)
+    parameters = ShallowWaterParameters(mesh, H=mean_depth, g=g)
 
     # Equation
-    tracers = [WaterVapour(space='DG'), CloudWater(space='DG')]
-    eqns = ThermalShallowWaterEquations(
-        domain, parameters, active_tracers=tracers
-    )
+    eqns = ThermalShallowWaterEquations(domain, parameters)
 
     # IO
+    diagnostic_fields = [
+        MeridionalComponent('u'), ZonalComponent('u'), RelativeVorticity()
+    ]
+    dumplist = ['b', 'D']
+
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False,
-        dumplist=['b', 'water_vapour', 'cloud_water', 'D']
+        dumplist=dumplist
     )
-    diagnostic_fields = [MeridionalComponent('u'), ZonalComponent('u')]
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
-    transport_methods = [
-        DGUpwind(eqns, field_name) for field_name in eqns.field_names
-    ]
-
-    linear_solver = ThermalSWSolver(eqns)
-
-    def sat_func(x_in):
-        D = x_in.subfunctions[1]
-        b = x_in.subfunctions[2]
-        q_v = x_in.subfunctions[3]
-        b_e = b - beta2*q_v
-        sat = q0*mean_depth/D * exp(nu*(1-b_e/g))
-        return sat
-
-    # Physics schemes
-    sat_adj = SWSaturationAdjustment(
-        eqns, sat_func, time_varying_saturation=True,
-        parameters=parameters, thermal_feedback=True, beta2=beta2
-    )
-
-    physics_schemes = [(sat_adj, ForwardEuler(domain))]
-
-    # ------------------------------------------------------------------------ #
-    # Timestepper
-    # ------------------------------------------------------------------------ #
-
+    # Transport
     subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
     transported_fields = [
         SSPRK3(domain, "u", subcycling_options=subcycling_opts),
@@ -110,13 +86,20 @@ def moist_thermal_gw(
             rk_formulation=RungeKuttaFormulation.linear
         ),
         SSPRK3(domain, "b", subcycling_options=subcycling_opts),
-        SSPRK3(domain, "water_vapour", subcycling_options=subcycling_opts),
-        SSPRK3(domain, "cloud_water", subcycling_options=subcycling_opts)
     ]
+    transport_methods = [
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "D", advective_then_flux=True),
+        DGUpwind(eqns, "b"),
+    ]
+
+    # ------------------------------------------------------------------------ #
+    # Timestepper
+    # ------------------------------------------------------------------------ #
+
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, physics_schemes=physics_schemes,
-        num_outer=2, num_inner=2
+        eqns, io, transported_fields, transport_methods, predictor='D',
+        tau_values={'D': 1.0, 'b': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #
@@ -126,8 +109,6 @@ def moist_thermal_gw(
     u0 = stepper.fields("u")
     D0 = stepper.fields("D")
     b0 = stepper.fields("b")
-    v0 = stepper.fields("water_vapour")
-    c0 = stepper.fields("cloud_water")
 
     lamda, phi, _ = lonlatr_from_xyz(xyz[0], xyz[1], xyz[2])
 
@@ -149,9 +130,9 @@ def moist_thermal_gw(
         * (sin(phi))**4 - 2*phi_0*(w + sigma)*(sin(phi))**2
     )
     theta = numerator / denominator
-    b_guess = parameters.g * (1 - theta)
+    bexpr = parameters.g * (1 - theta)
 
-    # Depth -- in balance with the contribution of a perturbation
+    # Depth -- in balance before the addition of a perturbation
     Dexpr = mean_depth - (1/g)*(w + sigma)*((sin(phi))**2)
 
     # Perturbation
@@ -162,38 +143,12 @@ def moist_thermal_gw(
     pert = 2000 * (1 - r/R0)
     Dexpr += pert
 
-    # Actual initial buoyancy is specified through equivalent buoyancy
-    q_t = 0.03
-    b_init = Function(b0.function_space()).interpolate(b_guess)
-    b_e_init = Function(b0.function_space()).interpolate(b_init - beta2*q_t)
-    q_v_init = Function(v0.function_space()).interpolate(q_t)
-
-    # Iterate to obtain equivalent buoyancy and saturation water vapour
-    n_iterations = 10
-
-    for _ in range(n_iterations):
-        q_sat_expr = q0*mean_depth/Dexpr * exp(nu*(1-b_e_init/g))
-        dq_sat_dq_v_expr = nu*beta2/g*q_sat_expr
-        q_v_init.interpolate(q_v_init - (q_sat_expr - q_v_init)/(dq_sat_dq_v_expr - 1.0))
-        b_e_init.interpolate(b_init - beta2*q_v_init)
-
-    # Water vapour set to saturation amount
-    vexpr = q0*mean_depth/Dexpr * exp(nu*(1-b_e_init/g))
-
-    # Back out the initial buoyancy using b_e and q_v
-    bexpr = b_e_init + beta2*vexpr
-
-    # Cloud is the rest of total liquid that isn't vapour
-    cexpr = Constant(q_t) - vexpr
-
     u0.project(uexpr)
     D0.interpolate(Dexpr)
     b0.interpolate(bexpr)
-    v0.interpolate(vexpr)
-    c0.interpolate(cexpr)
 
-    # Set reference profiles
-    Dbar = Function(D0.function_space()).assign(mean_depth)
+    # Set reference profiles to initial state
+    Dbar = Function(D0.function_space()).interpolate(Dexpr)
     bbar = Function(b0.function_space()).interpolate(bexpr)
     stepper.set_reference_profiles([('D', Dbar), ('b', bbar)])
 
@@ -219,32 +174,32 @@ if __name__ == "__main__":
         '--ncells_per_edge',
         help="The number of cells per edge of icosahedron",
         type=int,
-        default=moist_thermal_gw_defaults['ncells_per_edge']
+        default=thermal_gw_defaults['ncells_per_edge']
     )
     parser.add_argument(
         '--dt',
         help="The time step in seconds.",
         type=float,
-        default=moist_thermal_gw_defaults['dt']
+        default=thermal_gw_defaults['dt']
     )
     parser.add_argument(
         "--tmax",
         help="The end time for the simulation in seconds.",
         type=float,
-        default=moist_thermal_gw_defaults['tmax']
+        default=thermal_gw_defaults['tmax']
     )
     parser.add_argument(
         '--dumpfreq',
         help="The frequency at which to dump field output.",
         type=int,
-        default=moist_thermal_gw_defaults['dumpfreq']
+        default=thermal_gw_defaults['dumpfreq']
     )
     parser.add_argument(
         '--dirname',
         help="The name of the directory to write to.",
         type=str,
-        default=moist_thermal_gw_defaults['dirname']
+        default=thermal_gw_defaults['dirname']
     )
     args, unknown = parser.parse_known_args()
 
-    moist_thermal_gw(**vars(args))
+    thermal_gw(**vars(args))

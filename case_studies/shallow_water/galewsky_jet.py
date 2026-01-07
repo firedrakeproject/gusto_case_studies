@@ -18,15 +18,16 @@ from gusto import (
     Domain, IO, OutputParameters, GeneralCubedSphereMesh, RelativeVorticity,
     lonlatr_from_xyz, xyz_vector_from_lonlatr, NumericalIntegral,
     ShallowWaterEquations, ShallowWaterParameters, SSPRK3, DGUpwind,
-    SemiImplicitQuasiNewton, ZonalComponent, MeridionalComponent
+    SemiImplicitQuasiNewton, ZonalComponent, MeridionalComponent,
+    RungeKuttaFormulation, SubcyclingOptions
 )
 import numpy as np
 
 galewsky_jet_defaults = {
-    'ncells_per_edge': 48,     # number of cells per cubed sphere panel edge
-    'dt': 300.0,               # 5 minutes
+    'ncells_per_edge': 32,     # number of cells per cubed sphere panel edge
+    'dt': 600.0,               # 10 minutes
     'tmax': 6.*24.*60.*60.,    # 6 days
-    'dumpfreq': 288,           # once per day with default options
+    'dumpfreq': 144,           # once per day with default options
     'dirname': 'galewsky_jet'
 }
 
@@ -86,12 +87,23 @@ def galewsky_jet(
     io = IO(domain, output, diagnostic_fields=diagnostic_fields)
 
     # Transport schemes
-    transported_fields = [SSPRK3(domain, "u"), SSPRK3(domain, "D")]
-    transport_methods = [DGUpwind(eqns, "u"), DGUpwind(eqns, "D")]
+    subcycling_opts = SubcyclingOptions(subcycle_by_courant=0.25)
+    transported_fields = [
+        SSPRK3(domain, "u", subcycling_options=subcycling_opts),
+        SSPRK3(
+            domain, "D", subcycling_options=subcycling_opts,
+            rk_formulation=RungeKuttaFormulation.linear
+        )
+    ]
+    transport_methods = [
+        DGUpwind(eqns, "u"),
+        DGUpwind(eqns, "D", advective_then_flux=True)
+    ]
 
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
-        eqns, io, transported_fields, spatial_methods=transport_methods
+        eqns, io, transported_fields, spatial_methods=transport_methods,
+        predictor='D', tau_values={'D': 1.0}, reference_update_freq=10800.
     )
 
     # ------------------------------------------------------------------------ #

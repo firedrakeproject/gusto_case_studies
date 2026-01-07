@@ -39,7 +39,7 @@ final_field_names = ['RelativeVorticity', 'b']
 final_colour_schemes = ['RdBu_r', 'PuRd_r']
 final_field_labels = [r'$\zeta$ (s$^{-1}$)', r'$b$ (m s$^{-2}$)']
 final_contours_to_remove = [0.0, None]
-final_contours = [np.linspace(-4e-5, 4e-5, 17),
+final_contours = [np.linspace(-9e-5, 9e-5, 19),
                   np.linspace(8.8, 11.2, 13)]
 
 # ---------------------------------------------------------------------------- #
