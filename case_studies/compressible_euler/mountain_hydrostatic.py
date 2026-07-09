@@ -13,7 +13,8 @@ The setup used here uses the order 1 finite elements.
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from firedrake import (
     as_vector, VectorFunctionSpace, PeriodicIntervalMesh, ExtrudedMesh, sqrt,
-    SpatialCoordinate, exp, Function, Mesh, Constant
+    SpatialCoordinate, exp, Function, Mesh, Constant, interval, FiniteElement,
+    TensorProductElement
 )
 from gusto import (
     Domain, IO, OutputParameters, SemiImplicitQuasiNewton, SSPRK3, DGUpwind,
@@ -21,7 +22,8 @@ from gusto import (
     SpongeLayerParameters, CompressibleParameters, logger,
     compressible_hydrostatic_balance, MinKernel, MaxKernel,
     HydrostaticCompressibleEulerEquations, CompressibleEulerEquations,
-    EmbeddedDGOptions, RungeKuttaFormulation
+    EmbeddedDGOptions, RungeKuttaFormulation, ActiveTracer, ForwardEuler,
+    TransportEquationType
 )
 
 mountain_hydrostatic_defaults = {
@@ -69,7 +71,7 @@ def mountain_hydrostatic(
 
     element_order = 1
     u_eqn_type = 'vector_advection_form'
-    alpha = 0.55  # Necessary to absorb grid scale waves
+    alpha = 0.51
 
     # ------------------------------------------------------------------------ #
     # Set up model objects
@@ -81,7 +83,14 @@ def mountain_hydrostatic(
     ext_mesh = ExtrudedMesh(
         base_mesh, layers=nlayers, layer_height=domain_height/nlayers
     )
-    Vc = VectorFunctionSpace(ext_mesh, "DG", 2)
+
+    # Used equispaced DG elements to describe the mountain to ensure that
+    # the resulting profile is smooth
+    cell = base_mesh.ufl_cell().cellname
+    hori_elt = FiniteElement('DG', cell, 2, variant='equispaced')
+    vert_elt = FiniteElement('DG', interval, 2, variant='equispaced')
+    dg_elt = TensorProductElement(hori_elt, vert_elt)
+    Vc = VectorFunctionSpace(ext_mesh, dg_elt)
 
     # Describe the mountain
     xc = domain_width/2.
@@ -97,6 +106,15 @@ def mountain_hydrostatic(
     mesh._base_mesh = base_mesh  # Force new mesh to inherit original base mesh
     domain = Domain(mesh, dt, "CG", element_order)
 
+    # Tracer for consistent metric term
+    tracers = [
+        ActiveTracer(
+            'z', space='theta',
+            variable_type=0,  # a random number
+            transport_eqn=TransportEquationType.advective
+        ),
+    ]
+
     # Equation
     parameters = CompressibleParameters(mesh, g=g, cp=cp)
     sponge = SpongeLayerParameters(
@@ -105,12 +123,12 @@ def mountain_hydrostatic(
     if hydrostatic:
         eqns = HydrostaticCompressibleEulerEquations(
             domain, parameters, sponge_options=sponge,
-            u_transport_option=u_eqn_type
+            u_transport_option=u_eqn_type, active_tracers=tracers
         )
     else:
         eqns = CompressibleEulerEquations(
             domain, parameters, sponge_options=sponge,
-            u_transport_option=u_eqn_type
+            u_transport_option=u_eqn_type, active_tracers=tracers
         )
 
     # I/O
@@ -130,11 +148,13 @@ def mountain_hydrostatic(
     # Transport schemes
     theta_opts = EmbeddedDGOptions()
     transported_fields = [
+        ForwardEuler(domain, "z", options=theta_opts),
         SSPRK3(domain, "u"),
         SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
         SSPRK3(domain, "theta", options=theta_opts)
     ]
     transport_methods = [
+        DGUpwind(eqns, "z"),
         DGUpwind(eqns, "u"),
         DGUpwind(eqns, "rho", advective_then_flux=True),
         DGUpwind(eqns, "theta")
@@ -143,7 +163,8 @@ def mountain_hydrostatic(
     # Time stepper
     stepper = SemiImplicitQuasiNewton(
         eqns, io, transported_fields, transport_methods, predictor='rho',
-        alpha=alpha, tau_values={'rho': 1.0, 'theta': 1.0}
+        alpha=alpha, tau_values={'rho': 1.0, 'theta': 1.0},
+        consistent_metric=True
     )
 
     # ------------------------------------------------------------------------ #

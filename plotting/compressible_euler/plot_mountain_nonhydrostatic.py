@@ -35,8 +35,8 @@ final_field_labels = [
     r'$w$ (m s$^{-1}$)', r'$\Delta\theta$ (K)'
 ]
 final_contours = [
-    np.linspace(-0.04, 0.04, 21), np.linspace(-0.025, 0.025, 21),
-    np.linspace(-0.04, 0.04, 21), np.linspace(-0.025, 0.025, 21)
+    np.linspace(-0.006, 0.006, 21), np.linspace(-0.005, 0.005, 21),
+    np.linspace(-0.006, 0.006, 21), np.linspace(-0.005, 0.005, 21)
 ]
 
 # ---------------------------------------------------------------------------- #
