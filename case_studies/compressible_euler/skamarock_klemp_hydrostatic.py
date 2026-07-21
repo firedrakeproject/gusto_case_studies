@@ -73,7 +73,7 @@ def skamarock_klemp_hydrostatic(
 
     # Domain -- 3D volume mesh
     base_mesh = PeriodicRectangleMesh(
-        ncolumns, 1, domain_width, domain_length, quadrilateral=True
+        ncolumns, 3, domain_width, domain_length/3.0, quadrilateral=True
     )
     mesh = ExtrudedMesh(base_mesh, nlayers, layer_height=domain_height/nlayers)
     domain = Domain(mesh, dt, "RTCF", element_order)
