@@ -1,4 +1,5 @@
 from dry_baroclinic_sphere import dry_baroclinic_sphere
+from held_suarez import held_suarez
 from moist_baroclinic_channel import moist_baroclinic_channel
 from moist_bryan_fritsch import moist_bryan_fritsch
 from moist_skamarock_klemp import moist_skamarock_klemp
@@ -19,6 +20,17 @@ def test_dry_baroclinic_sphere():
         tmax=1800,
         dumpfreq=2,
         dirname='pytest_dry_baroclinic_sphere'
+    )
+
+
+def test_held_suarez():
+    held_suarez(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=1800,
+        dumpfreq=2,
+        dirname='pytest_held_suarez'
     )
 
 
