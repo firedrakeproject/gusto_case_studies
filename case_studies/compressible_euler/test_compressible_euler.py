@@ -6,6 +6,7 @@ from mountain_hydrostatic import mountain_hydrostatic
 from mountain_nonhydrostatic import mountain_nonhydrostatic
 from robert_bubble import robert_bubble
 from skamarock_klemp_hydrostatic import skamarock_klemp_hydrostatic
+from solid_body_rotation import solid_body_sphere
 from travelling_vortex import travelling_vortex
 import pytest
 
@@ -141,6 +142,16 @@ def test_hyd_switch_skamarock_klemp_hydrostatic():
         dumpfreq=10,
         dirname='pytest_hyd_switch_skamarock_klemp_hydrostatic',
         hydrostatic=True
+    )
+
+def test_solid_body_sphere():
+    solid_body_sphere(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=1800,
+        dumpfreq=2,
+        dirname='pytest_solid_body_sphere'
     )
 
 
