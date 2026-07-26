@@ -29,8 +29,29 @@ def test_held_suarez():
         nlayers=3,
         dt=900,
         tmax=1800,
+        tmax_crun=1800,
         dumpfreq=2,
         dirname='pytest_held_suarez'
+    )
+
+
+def test_held_suarez_crun():
+    held_suarez(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=3600,
+        tmax_crun=1800,
+        dumpfreq=2,
+        dirname='pytest_held_suarez'
+    )
+    held_suarez(
+        dt=900,
+        tmax=3600,
+        tmax_crun=1800,
+        dumpfreq=2,
+        dirname='pytest_held_suarez',
+        pickup=True,
     )
 
 

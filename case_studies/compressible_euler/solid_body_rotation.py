@@ -1,5 +1,5 @@
 """
-A solid body rotation case from
+A solid body rotation case from Staniforth & White (2007).
 
 This is a 3D test on the sphere, with an initial state that is in unsteady
 balance, with a perturbation added to the wind.
@@ -14,19 +14,18 @@ from firedrake import (
     NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction,
 )
 from gusto import (
-    Domain, GeneralCubedSphereMesh, CompressibleParameters, CompressibleSolver,
-    CompressibleEulerEquations, OutputParameters, IO, EmbeddedDGOptions, SSPRK3,
-    DGUpwind, logger, SemiImplicitQuasiNewton, lonlatr_from_xyz,
-    xyz_vector_from_lonlatr, compressible_hydrostatic_balance, Pressure, Temperature,
-    ZonalComponent
+    GeneralCubedSphereMesh, CompressibleParameters, CompressibleEulerEquations,
+    OutputParameters, logger, SIQNModel, lonlatr_from_xyz, Temperature,
+    xyz_vector_from_lonlatr, compressible_hydrostatic_balance, Pressure,
+    ZonalComponent, MeridionalComponent, RadialComponent
 )
 
 solid_body_sphere_defaults = {
     'ncell_per_edge': 16,
     'nlayers': 15,
     'dt': 900.0,               # 15 minutes
-    'tmax': 15.*24.*60.*60.,   # 15 days
-    'dumpfreq': 48,            # Corresponds to every 12 hours with default opts
+    'tmax': 30.*24.*60.*60.,   # 30 days
+    'dumpfreq': 96,            # Corresponds to every 24 hours with default opts
     'dirname': 'solid_body_sphere'
 }
 
@@ -51,12 +50,12 @@ def solid_body_sphere(
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
-    horder = 1        # horizontal order of finite element de Rham complex
-    vorder = 1        # vertical order of finite element de Rham complex
     u_eqn_type = 'vector_advection_form'  # Form of the momentum equation to use
+
     # ------------------------------------------------------------------------ #
     # Set up model objects
     # ------------------------------------------------------------------------ #
+    # Domain
     layer_height = []
     running_height = 0
     # Use the DCMIP vertical grid stretching
@@ -69,51 +68,35 @@ def solid_body_sphere(
         depth = height - running_height
         running_height = height
         layer_height.append(depth)
-    # Create mesh and domain for problem
-    m = GeneralCubedSphereMesh(
+
+    base_mesh = GeneralCubedSphereMesh(
         radius=a, num_cells_per_edge_of_panel=ncell_per_edge, degree=2
     )
     mesh = ExtrudedMesh(
-        m, layers=nlayers, layer_height=layer_height, extrusion_type='radial'
-    )
-    domain = Domain(
-        mesh, dt, "RTCF", horizontal_degree=horder, vertical_degree=vorder
+        base_mesh, layers=nlayers, layer_height=layer_height,
+        extrusion_type='radial'
     )
 
-    # Create Equations
-    params = CompressibleParameters(Omega=omega)
-    eqn = CompressibleEulerEquations(
-        domain, params, u_transport_option=u_eqn_type
+    # Equations
+    params = CompressibleParameters(mesh, Omega=omega)
+    eqn = CompressibleEulerEquations
+
+    # Model
+    model = SIQNModel(
+        mesh, dt, params, eqn, u_transport_option=u_eqn_type, family="RTCF"
     )
+
     # Outputting and IO
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
-
-    diagnostic_fields = [Pressure(eqn), Temperature(eqn), ZonalComponent('u')]
-    io = IO(domain, output, diagnostic_fields=diagnostic_fields)
-
-    # Transport options -- use embedded DG for theta transport
-    theta_opts = EmbeddedDGOptions()
-    transported_fields = [
-        SSPRK3(domain, "u"),
-        SSPRK3(domain, "rho"),
-        SSPRK3(domain, "theta", options=theta_opts)
-    ]
-    transport_methods = [
-        DGUpwind(eqn, "u"),
-        DGUpwind(eqn, "rho"),
-        DGUpwind(eqn, "theta")
+    diagnostic_fields = [
+        MeridionalComponent('u'), ZonalComponent('u'), RadialComponent('u'),
+        Temperature(model.equation), Pressure(model.equation)
     ]
 
-    # Linear Solver
-    linear_solver = CompressibleSolver(eqn)
-
-    # Time Stepper
-    stepper = SemiImplicitQuasiNewton(
-        eqn, io, transported_fields, transport_methods,
-        linear_solver=linear_solver, num_outer=4, num_inner=1
-    )
+    # Wrap up model setup
+    model.setup(output, diagnostic_fields=diagnostic_fields)
 
     # ------------------------------------------------------------------------ #
     # Initial Conditions
@@ -129,6 +112,7 @@ def solid_body_sphere(
     p0 = Constant(100000)
     T0 = 280.  # in K
 
+    stepper = model.stepper
     vel0 = stepper.fields("u")
     rho0 = stepper.fields("rho")
     theta0 = stepper.fields("theta")
@@ -178,7 +162,7 @@ def solid_body_sphere(
 
     logger.info('find rho by solving hydrostatic balance')
     compressible_hydrostatic_balance(
-        eqn, theta0, rho0, exner_boundary=exner, solve_for_rho=True
+        model.equation, theta0, rho0, exner_boundary=exner, solve_for_rho=True
     )
 
     rho_analytic = Function(Vr).interpolate(rho_expr)

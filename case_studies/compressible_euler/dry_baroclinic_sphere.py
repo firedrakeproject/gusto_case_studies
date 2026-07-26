@@ -16,11 +16,10 @@ from firedrake import (
     NonlinearVariationalProblem, NonlinearVariationalSolver, TestFunction
 )
 from gusto import (
-    Domain, GeneralCubedSphereMesh, CompressibleParameters,
-    CompressibleEulerEquations, OutputParameters, IO, EmbeddedDGOptions, SSPRK3,
-    DGUpwind, logger, SemiImplicitQuasiNewton, lonlatr_from_xyz,
-    xyz_vector_from_lonlatr, compressible_hydrostatic_balance,
-    RungeKuttaFormulation
+    GeneralCubedSphereMesh, CompressibleParameters, CompressibleEulerEquations,
+    OutputParameters, SIQNModel, logger, lonlatr_from_xyz,
+    xyz_vector_from_lonlatr, compressible_hydrostatic_balance, Pressure,
+    MeridionalComponent, ZonalComponent, RadialComponent, Temperature
 )
 
 dry_baroclinic_sphere_defaults = {
@@ -60,8 +59,6 @@ def dry_baroclinic_sphere(
     # ------------------------------------------------------------------------ #
     # Our settings for this set up
     # ------------------------------------------------------------------------ #
-    horder = 1        # horizontal order of finite element de Rham complex
-    vorder = 1        # vertical order of finite element de Rham complex
     u_eqn_type = 'vector_advection_form'  # Form of the momentum equation to use
 
     # ------------------------------------------------------------------------ #
@@ -89,41 +86,27 @@ def dry_baroclinic_sphere(
         base_mesh, layers=nlayers, layer_height=layer_height,
         extrusion_type='radial'
     )
-    domain = Domain(
-        mesh, dt, "RTCF", horizontal_degree=horder, vertical_degree=vorder
-    )
 
     # Equations
     params = CompressibleParameters(mesh, Omega=omega)
-    eqn = CompressibleEulerEquations(
-        domain, params, u_transport_option=u_eqn_type
+    eqn = CompressibleEulerEquations
+
+    # Model
+    model = SIQNModel(
+        mesh, dt, params, eqn, u_transport_option=u_eqn_type, family="RTCF"
     )
 
     # Outputting and IO
     output = OutputParameters(
         dirname=dirname, dumpfreq=dumpfreq, dump_nc=True, dump_vtus=False
     )
-    diagnostic_fields = []
-    io = IO(domain, output, diagnostic_fields=diagnostic_fields)
-
-    # Transport options -- use embedded DG for theta transport
-    theta_opts = EmbeddedDGOptions()
-    transported_fields = [
-        SSPRK3(domain, "u"),
-        SSPRK3(domain, "rho", rk_formulation=RungeKuttaFormulation.linear),
-        SSPRK3(domain, "theta", options=theta_opts)
-    ]
-    transport_methods = [
-        DGUpwind(eqn, "u"),
-        DGUpwind(eqn, "rho", advective_then_flux=True),
-        DGUpwind(eqn, "theta")
+    diagnostic_fields = [
+        MeridionalComponent('u'), ZonalComponent('u'), RadialComponent('u'),
+        Temperature(model.equation), Pressure(model.equation)
     ]
 
-    # Time Stepper
-    stepper = SemiImplicitQuasiNewton(
-        eqn, io, transported_fields, transport_methods, predictor='rho',
-        tau_values={'rho': 1.0, 'theta': 1.0}
-    )
+    # Wrap up model setup
+    model.setup(output, diagnostic_fields=diagnostic_fields)
 
     # ------------------------------------------------------------------------ #
     # Initial Conditions
@@ -132,6 +115,7 @@ def dry_baroclinic_sphere(
     x, y, z = SpatialCoordinate(mesh)
     lon, lat, r = lonlatr_from_xyz(x, y, z)
 
+    stepper = model.stepper
     u0 = stepper.fields("u")
     rho0 = stepper.fields("rho")
     theta0 = stepper.fields("theta")
@@ -248,7 +232,7 @@ def dry_baroclinic_sphere(
     # Obtain initial conditions -- set up projection manually to
     # manually specify a reduced quadrature degree
     logger.info('Set up initial conditions')
-    logger.debug('project u')
+    logger.info('Initial conditions: project u')
     test_u = TestFunction(Vu)
     dx_reduced = dx(degree=4)
     u_field = zonal_u*e_lon + merid_u*e_lat + radial_u*e_r
@@ -261,9 +245,9 @@ def dry_baroclinic_sphere(
     exner = Function(Vr).interpolate(exner_expr)
     rho0.interpolate(rho_expr)
 
-    logger.info('find rho by solving hydrostatic balance')
+    logger.info('Initial conditions: find rho by solving hydrostatic balance')
     compressible_hydrostatic_balance(
-        eqn, theta0, rho0, exner_boundary=exner, solve_for_rho=True
+        model.equation, theta0, rho0, exner_boundary=exner, solve_for_rho=True
     )
 
     rho_analytic = Function(Vr).interpolate(rho_expr)
@@ -281,7 +265,7 @@ def dry_baroclinic_sphere(
     # Run
     # ------------------------------------------------------------------------ #
 
-    stepper.run(t=0, tmax=tmax)
+    model.run(t=0, tmax=tmax)
 
 # ---------------------------------------------------------------------------- #
 # MAIN
