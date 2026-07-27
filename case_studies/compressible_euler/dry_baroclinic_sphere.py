@@ -27,7 +27,7 @@ dry_baroclinic_sphere_defaults = {
     'nlayers': 15,
     'dt': 900.0,               # 15 minutes
     'tmax': 15.*24.*60.*60.,   # 15 days
-    'dumpfreq': 48,            # Corresponds to every 12 hours with default opts
+    'dumpfreq': 96,            # Corresponds to every 24 hours with default opts
     'dirname': 'dry_baroclinic_sphere'
 }
 

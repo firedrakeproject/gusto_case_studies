@@ -16,14 +16,14 @@ from tomplot import (
     set_tomplot_style, tomplot_cmap, tomplot_contours, plot_contoured_field,
     add_colorbar_ax, extract_gusto_coords, extract_gusto_field,
     extract_gusto_vertical_slice, reshape_gusto_data, area_restriction,
-    tomplot_field_title, add_colorbar_fig, regrid_vertical_slice
+    tomplot_field_title, regrid_vertical_slice
 )
 
 # ---------------------------------------------------------------------------- #
 # Directory for results and plots
 # ---------------------------------------------------------------------------- #
 test = 'dry_baroclinic_sphere'
-results_file_name = '/data/users/alex.brown/data/isambard/dry_baroclinic_sphere_dt450_C96_30L/field_output.nc'
+results_file_name = f'{abspath(dirname(__file__))}/../../results/{test}/field_output.nc'
 plot_stem = f'{abspath(dirname(__file__))}/../../figures/compressible_euler/{test}'
 
 # ---------------------------------------------------------------------------- #

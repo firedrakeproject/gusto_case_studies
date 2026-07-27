@@ -20,23 +20,23 @@ from gusto import (
     ZonalComponent, MeridionalComponent, RadialComponent
 )
 
-solid_body_sphere_defaults = {
+solid_body_rotation_defaults = {
     'ncell_per_edge': 16,
     'nlayers': 15,
     'dt': 900.0,               # 15 minutes
     'tmax': 30.*24.*60.*60.,   # 30 days
     'dumpfreq': 96,            # Corresponds to every 24 hours with default opts
-    'dirname': 'solid_body_sphere'
+    'dirname': 'solid_body_rotation'
 }
 
 
-def solid_body_sphere(
-        ncell_per_edge=solid_body_sphere_defaults['ncell_per_edge'],
-        nlayers=solid_body_sphere_defaults['nlayers'],
-        dt=solid_body_sphere_defaults['dt'],
-        tmax=solid_body_sphere_defaults['tmax'],
-        dumpfreq=solid_body_sphere_defaults['dumpfreq'],
-        dirname=solid_body_sphere_defaults['dirname']
+def solid_body_rotation(
+        ncell_per_edge=solid_body_rotation_defaults['ncell_per_edge'],
+        nlayers=solid_body_rotation_defaults['nlayers'],
+        dt=solid_body_rotation_defaults['dt'],
+        tmax=solid_body_rotation_defaults['tmax'],
+        dumpfreq=solid_body_rotation_defaults['dumpfreq'],
+        dirname=solid_body_rotation_defaults['dirname']
 ):
     # ------------------------------------------------------------------------ #
     # Parameters for test case
@@ -197,38 +197,38 @@ if __name__ == "__main__":
         '--ncell_per_edge',
         help="The number of cells per panel edge of the cubed-sphere.",
         type=int,
-        default=solid_body_sphere_defaults['ncell_per_edge']
+        default=solid_body_rotation_defaults['ncell_per_edge']
     )
     parser.add_argument(
         '--nlayers',
         help="The number of layers for the mesh.",
         type=int,
-        default=solid_body_sphere_defaults['nlayers']
+        default=solid_body_rotation_defaults['nlayers']
     )
     parser.add_argument(
         '--dt',
         help="The time step in seconds.",
         type=float,
-        default=solid_body_sphere_defaults['dt']
+        default=solid_body_rotation_defaults['dt']
     )
     parser.add_argument(
         "--tmax",
         help="The end time for the simulation in seconds.",
         type=float,
-        default=solid_body_sphere_defaults['tmax']
+        default=solid_body_rotation_defaults['tmax']
     )
     parser.add_argument(
         '--dumpfreq',
         help="The frequency at which to dump field output.",
         type=int,
-        default=solid_body_sphere_defaults['dumpfreq']
+        default=solid_body_rotation_defaults['dumpfreq']
     )
     parser.add_argument(
         '--dirname',
         help="The name of the directory to write to.",
         type=str,
-        default=solid_body_sphere_defaults['dirname']
+        default=solid_body_rotation_defaults['dirname']
     )
     args, unknown = parser.parse_known_args()
 
-    solid_body_sphere(**vars(args))
+    solid_body_rotation(**vars(args))
