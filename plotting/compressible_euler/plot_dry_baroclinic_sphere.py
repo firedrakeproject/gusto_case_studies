@@ -59,7 +59,7 @@ slices = ['z', 'z']
 levels = [0, 0]
 slice_along = 'z'
 colour_schemes = ['PiYG_r', 'RdBu_r']
-centre_titles = ['Surface pressure',  'Temperature']
+centre_titles = ['Surface pressure', 'Temperature']
 field_labels = [r'$P$ (hPa)', r'$T$ (K)']
 
 contours = [
@@ -76,7 +76,7 @@ remove_lines = [100000.0, None]
 # General options
 # ---------------------------------------------------------------------------- #
 contour_method = 'tricontour'
-domain_limit = {'X' : (-180, 180), 'Y' : (-90, 90)}
+domain_limit = {'X': (-180, 180), 'Y': (-90, 90)}
 xlims = domain_limit['X']
 ylims = domain_limit['Y']
 time_idx = -1
@@ -148,7 +148,7 @@ for time_idx in time_idxs:
 
             height_label = 'surface' if slice_height == 0.0 else f'z = {slice_height/1000:.0f} km'
             tomplot_field_title(ax, f'{title} ({height_label})', fontsize='17.0',
-                               minmax=True, field_data=field_data)
+                                minmax=True, field_data=field_data)
             ax.set_xlim(xlims)
             ax.set_xticks(xticks)
             ax.set_xticklabels(xtick_labels, fontsize='15.0')
@@ -190,7 +190,7 @@ for time_idx in time_idxs:
                             cbar_labelpad=-5, cbar_format='.0f')
 
             tomplot_field_title(ax, f'{title} (lon = 0)', fontsize='17.0',
-                               minmax=True, field_data=field_data)
+                                minmax=True, field_data=field_data)
             ax.set_xlim(initial_xlims)
             ax.set_xticks(yticks)
             ax.set_xticklabels(ytick_labels, fontsize='15.0')
@@ -227,12 +227,12 @@ for time_idx in time_idxs:
             # Reshape
             field_full, coords_X_full, coords_Y_full, _ = \
                 reshape_gusto_data(field_full, coords_X_full,
-                                    coords_Y_full, coords_Z_full)
+                                   coords_Y_full, coords_Z_full)
 
             # Domain restriction
             field_data, coords_hori, coords_Z = \
                 area_restriction(field_full[:, level], coords_X_full[:, level],
-                                        coords_Y_full[:, level], domain_limit)
+                                 coords_Y_full[:, level], domain_limit)
 
             cmap, _ = tomplot_cmap(
                 contour, colour_scheme, cmap_rescale_type=cmap_rescale_type,

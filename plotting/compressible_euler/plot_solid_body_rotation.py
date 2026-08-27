@@ -82,7 +82,7 @@ final_slice_at = 0.0
 # General options
 # ---------------------------------------------------------------------------- #
 contour_method = 'tricontour'
-domain_limit = {'X' : (-180, 180), 'Y' : (-90, 90)}
+domain_limit = {'X': (-180, 180), 'Y': (-90, 90)}
 xlims = domain_limit['X']
 ylims = domain_limit['Y']
 time_idx = -1
@@ -169,7 +169,7 @@ for time_idx in time_idxs:
                 extract_gusto_vertical_slice(
                     data_file, field_name, time_idx,
                     slice_along='lon', slice_at=initial_slice_at
-            )
+                )
 
             # Slice needs regridding as points don't cleanly live along lon = 0.0
             field_data, coords_hori, coords_Z = regrid_vertical_slice(
@@ -190,7 +190,7 @@ for time_idx in time_idxs:
                             cbar_labelpad=-5, cbar_format='.0f')
 
             tomplot_field_title(ax, f'{title} (lon = 0)', fontsize='17.0',
-                               minmax=True, field_data=field_data)
+                                minmax=True, field_data=field_data)
             ax.set_xlim(initial_xlims)
             ax.set_xticks(yticks)
             ax.set_xticklabels(ytick_labels, fontsize='15.0')

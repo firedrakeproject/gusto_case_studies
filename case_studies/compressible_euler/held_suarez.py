@@ -33,13 +33,13 @@ from gusto import (
 held_suarez_defaults = {
     'ncell_per_edge': 12,
     'nlayers': 15,
-    'dt': 1200.0,                 # 20 minutes
-    'tmax': 1200.*24.*60.*60.,    # 1200 days
-    'tmax_crun': 100*24.*60.*60., # 100 days for a single continuation run
-    'dumpfreq': 7200,             # Every 100 days with default opts
-    'dirname': 'held_suarez',     # Name of the directory to write to
-    'pickup': False,              # Pick up from checkpoint or initialise from scratch
-    'pickup_dir': None,           # Optional override directory to pick up from
+    'dt': 1200.0,                  # 20 minutes
+    'tmax': 1200.*24.*60.*60.,     # 1200 days
+    'tmax_crun': 100*24.*60.*60.,  # 100 days for a single continuation run
+    'dumpfreq': 7200,              # Every 100 days with default opts
+    'dirname': 'held_suarez',      # Name of the directory to write to
+    'pickup': False,               # Pick up from checkpoint or initialise from scratch
+    'pickup_dir': None,            # Optional override directory to pick up from
 }
 
 

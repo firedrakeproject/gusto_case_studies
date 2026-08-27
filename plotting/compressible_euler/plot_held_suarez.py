@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 import numpy as np
 from tomplot import (
-    set_tomplot_style, tomplot_cmap, tomplot_contours, plot_contoured_field,
+    set_tomplot_style, tomplot_cmap, plot_contoured_field,
     add_colorbar_ax, extract_gusto_coords, extract_gusto_field,
     extract_gusto_vertical_slice, reshape_gusto_data, area_restriction,
     tomplot_field_title, regrid_vertical_slice
@@ -67,7 +67,7 @@ instant_time_idxs = [1]
 # General options
 # ---------------------------------------------------------------------------- #
 contour_method = 'tricontour'
-domain_limit = {'X' : (-180, 180), 'Y' : (-90, 90)}
+domain_limit = {'X': (-180, 180), 'Y': (-90, 90)}
 xlims = domain_limit['X']
 ylims = domain_limit['Y']
 time_idx = -1
@@ -129,7 +129,7 @@ for i, (ax, field_name, field_label, colour_scheme, title, slice_height, contour
 
     height_label = 'surface' if slice_height == 0.0 else f'z = {slice_height/1000:.0f} km'
     tomplot_field_title(ax, f'{title} ({height_label})', fontsize='17.0',
-                       minmax=True, field_data=field_data)
+                        minmax=True, field_data=field_data)
     ax.set_xlim(xlims)
     ax.set_xticks(xticks)
     ax.set_xticklabels(xtick_labels, fontsize='15.0')
@@ -147,8 +147,10 @@ for i, (ax, field_name, field_label, colour_scheme, title, contours) in \
     # Data extraction
     # ------------------------------------------------------------------------ #
     orig_field_data, orig_coords_X, orig_coords_Y, orig_coords_Z = \
-        extract_gusto_vertical_slice(data_file, field_name, time_idx,
-                                     slice_along='lon', slice_at=initial_slice_at)
+        extract_gusto_vertical_slice(
+            data_file, field_name, time_idx,
+            slice_along='lon', slice_at=initial_slice_at
+        )
 
     # Slice needs regridding as points don't cleanly live along lon = 0.0
     field_data, coords_hori, coords_Z = regrid_vertical_slice(
@@ -168,7 +170,7 @@ for i, (ax, field_name, field_label, colour_scheme, title, contours) in \
                     cbar_labelpad=-5, cbar_format='.0f')
 
     tomplot_field_title(ax, f'{title} (lon = 0)', fontsize='17.0',
-                       minmax=True, field_data=field_data)
+                        minmax=True, field_data=field_data)
     ax.set_xlim(initial_xlims)
     ax.set_xticks(yticks)
     ax.set_xticklabels(ytick_labels, fontsize='15.0')
@@ -199,7 +201,7 @@ for time_idx in instant_time_idxs:
 
     for col_idx, (field_name, title, field_label, colour_scheme, contours) in \
         enumerate(zip(instant_field_names, instant_titles, instant_field_labels,
-                    instant_colour_schemes, all_contours)):
+                      instant_colour_schemes, all_contours)):
         ax = axarray[col_idx]
         # -------------------------------------------------------------------- #
         # Data extraction: lon/z slice at lat = 0
@@ -261,4 +263,3 @@ print(
     'Zonal average plot not yet implemented -- awaiting a zonal-averaging '
     'routine in tomplot'
 )
-

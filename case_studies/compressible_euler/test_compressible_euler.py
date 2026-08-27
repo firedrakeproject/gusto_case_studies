@@ -177,6 +177,7 @@ def test_hyd_switch_skamarock_klemp_hydrostatic():
         hydrostatic=True
     )
 
+
 def test_solid_body_rotation():
     solid_body_rotation(
         ncell_per_edge=4,
