@@ -1,4 +1,5 @@
 from dry_baroclinic_sphere import dry_baroclinic_sphere
+from held_suarez import held_suarez
 from moist_baroclinic_channel import moist_baroclinic_channel
 from moist_bryan_fritsch import moist_bryan_fritsch
 from moist_skamarock_klemp import moist_skamarock_klemp
@@ -6,6 +7,7 @@ from mountain_hydrostatic import mountain_hydrostatic
 from mountain_nonhydrostatic import mountain_nonhydrostatic
 from robert_bubble import robert_bubble
 from skamarock_klemp_hydrostatic import skamarock_klemp_hydrostatic
+from solid_body_rotation import solid_body_rotation
 from travelling_vortex import travelling_vortex
 import pytest
 
@@ -18,6 +20,38 @@ def test_dry_baroclinic_sphere():
         tmax=1800,
         dumpfreq=2,
         dirname='pytest_dry_baroclinic_sphere'
+    )
+
+
+def test_held_suarez():
+    held_suarez(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=1800,
+        tmax_crun=1800,
+        dumpfreq=2,
+        dirname='pytest_held_suarez'
+    )
+
+
+def test_held_suarez_crun():
+    held_suarez(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=3600,
+        tmax_crun=1800,
+        dumpfreq=2,
+        dirname='pytest_held_suarez'
+    )
+    held_suarez(
+        dt=900,
+        tmax=3600,
+        tmax_crun=1800,
+        dumpfreq=2,
+        dirname='pytest_held_suarez',
+        pickup=True,
     )
 
 
@@ -141,6 +175,17 @@ def test_hyd_switch_skamarock_klemp_hydrostatic():
         dumpfreq=10,
         dirname='pytest_hyd_switch_skamarock_klemp_hydrostatic',
         hydrostatic=True
+    )
+
+
+def test_solid_body_rotation():
+    solid_body_rotation(
+        ncell_per_edge=4,
+        nlayers=3,
+        dt=900,
+        tmax=1800,
+        dumpfreq=2,
+        dirname='pytest_solid_body_rotation'
     )
 
 
