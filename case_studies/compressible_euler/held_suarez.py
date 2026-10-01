@@ -27,7 +27,7 @@ from gusto import (
     MeridionalComponent, ZonalComponent, Pressure, RadialComponent, Temperature,
     Relaxation, RayleighFriction, ForwardEuler, BackwardEuler,
     compressible_hydrostatic_balance, logger, SIQNModel,
-    HeldSuarezParameters, pick_up_mesh
+    HeldSuarezParameters, pick_up_mesh, TimeAveragedDiagnostic
 )
 
 held_suarez_defaults = {
@@ -160,7 +160,9 @@ def held_suarez(
     # Diagnostics
     diagnostic_fields = [
         MeridionalComponent('u'), ZonalComponent('u'), RadialComponent('u'),
-        Temperature(model.equation), Pressure(model.equation)
+        Temperature(model.equation), Pressure(model.equation),
+        TimeAveragedDiagnostic('Temperature', sample_freq=9),
+        TimeAveragedDiagnostic('u_zonal', sample_freq=9)
     ]
 
     # Held-Suarez physics schemes
@@ -352,7 +354,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--pickup',
         help="Pick up from checkpoint or initialise from scratch.",
-        type=bool,
+        action="store_true",
         default=held_suarez_defaults['pickup']
     )
     parser.add_argument(
