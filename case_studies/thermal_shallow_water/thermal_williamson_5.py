@@ -121,11 +121,11 @@ def thermal_williamson_5(
     u0 = stepper.fields("u")
     D0 = stepper.fields("D")
     b0 = stepper.fields("b")
-
+    topog_field = stepper.fields('topography')
     uexpr = as_vector([-u_max*y/radius, u_max*x/radius, 0.0])
 
     Dexpr = (
-        mean_depth - tpexpr
+        mean_depth - topog_field
         - (radius * parameters.Omega * u_max + 0.5*u_max**2)*(z/radius)**2/g
     )
 
