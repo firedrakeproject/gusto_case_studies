@@ -254,7 +254,15 @@ def dry_baroclinic_sphere(
     u_field = zonal_u*e_lon + merid_u*e_lat + radial_u*e_r
     u_proj_eqn = inner(test_u, u0 - u_field)*dx_reduced
     u_proj_prob = NonlinearVariationalProblem(u_proj_eqn, u0)
-    u_proj_solver = NonlinearVariationalSolver(u_proj_prob)
+    u_solver_parameters = {
+        'snes_type': 'ksponly',
+        'ksp_rtol': 1e-7,
+        'ksp_type': 'cg',
+        'pc_type': 'bjacobi',
+        'sub_pc_type': 'ilu'
+    }
+    u_proj_solver = NonlinearVariationalSolver(u_proj_prob, solver_parameters=u_solver_parameters)
+
     u_proj_solver.solve()
 
     theta0.interpolate(theta_expr)
