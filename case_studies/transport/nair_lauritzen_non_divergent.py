@@ -17,9 +17,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     exp, cos, sin, conditional, SpatialCoordinate, pi, min_value, grad,
-    Function, Projector, assemble
+    Function, Projector, assemble, interpolate
 )
-from firedrake.__future__ import interpolate
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, IO, lonlatr_from_xyz, SSPRK3,
     DGUpwind, PrescribedTransport, GeneralIcosahedralSphereMesh,
