@@ -11,9 +11,8 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 from firedrake import (
     RectangleMesh, exp, SpatialCoordinate, pi, Constant, sin, cos, sqrt, grad,
-    Function, Projector, assemble
+    Function, Projector, assemble, interpolate
 )
-from firedrake.__future__ import interpolate
 from gusto import (
     Domain, AdvectionEquation, OutputParameters, CourantNumber, XComponent,
     YComponent, DGUpwind, SourceSink, PrescribedTransport, SSPRK3, IO, logger,
