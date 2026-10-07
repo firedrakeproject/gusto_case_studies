@@ -204,9 +204,9 @@ for i, (ax, field_name, field_label, colour_scheme, title, contours) in \
     ax.set_ylabel('Height (km)', labelpad=-10, fontsize='15.0')
 
 fig.suptitle('Held-Suarez: Initial fields', y=0.98, fontsize=24)
-# ------------------------------------------------------------------------------ #
+# ---------------------------------------------------------------------------- #
 # Save figure
-# ------------------------------------------------------------------------------ #
+# ---------------------------------------------------------------------------- #
 plot_name = f'{plot_stem}_initial.png'
 print(f'Saving figure to {plot_name}')
 fig.savefig(plot_name, bbox_inches='tight')
@@ -341,21 +341,27 @@ for time_idx in instant_time_idxs:
 # 4. Zonal averages
 # ---------------------------------------------------------------------------- #
 zonal_field_names = ['Temperature_average', 'u_zonal_average']
-time_idx = -1
+time_idxs = range(2, 13)
 
 fig, axarray = plt.subplots(1, 2, figsize=(16, 8))
 
-time = data_file['time'][time_idx]
+time = data_file['time'][time_idxs[-1]]
 time_in_days = time / (24*60*60)
 
 for col_idx, (field_name, title, field_label, colour_scheme, contours) in \
     enumerate(zip(zonal_field_names, instant_titles, instant_field_labels,
                   instant_colour_schemes, all_contours)):
     ax = axarray[col_idx]
-    # -------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     # Data extraction and zonal averaging
-    # -------------------------------------------------------------------- #
-    field_full = extract_gusto_field(data_file, field_name, time_idx)
+    # ------------------------------------------------------------------------ #
+
+    # Time average fields
+    field_full = extract_gusto_field(data_file, field_name, time_idxs[0])
+    for time_idx in time_idxs[1:]:
+        field_full += extract_gusto_field(data_file, field_name, time_idx)
+    field_full /= len(time_idxs)
+
     coords_X_full, coords_Y_full, coords_Z_full = \
         extract_gusto_coords(data_file, field_name)
 
@@ -372,9 +378,9 @@ for col_idx, (field_name, title, field_label, colour_scheme, contours) in \
     coords_lat_2d, coords_height_2d = np.meshgrid(
         lat_bin_centres, level_heights_km
     )
-    # -------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     # Plot data
-    # -------------------------------------------------------------------- #
+    # ------------------------------------------------------------------------ #
     cmap, lines = tomplot_cmap(contours, colour_scheme)
     cf, _ = plot_contoured_field(
         ax, coords_lat_2d, coords_height_2d, zonal_mean.T, 'contour',
@@ -397,9 +403,9 @@ for col_idx, (field_name, title, field_label, colour_scheme, contours) in \
     ax.set_ylabel('Height (km)', labelpad=-10, fontsize='15.0')
 
 fig.suptitle(rf'Held-Suarez: Zonal averages, $t=$ {int(time_in_days)} days', y=0.98, fontsize=24)
-# ------------------------------------------------------------------------------ #
+# ---------------------------------------------------------------------------- #
 # Save figure
-# ------------------------------------------------------------------------------ #
+# ---------------------------------------------------------------------------- #
 plot_name = f'{plot_stem}_zonal_average.png'
 print(f'Saving figure to {plot_name}')
 fig.savefig(plot_name, bbox_inches='tight', dpi=300)

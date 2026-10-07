@@ -221,9 +221,9 @@ for time_idx in time_idxs:
                           wind_colour_schemes, wind_contours, remove_contours)):
             for row_idx, row_type in enumerate(row_types):
                 ax = axarray[row_idx, col_idx]
-                # ---------------------------------------------------------- #
+                # ------------------------------------------------------------ #
                 # Data extraction
-                # ---------------------------------------------------------- #
+                # ------------------------------------------------------------ #
                 if row_type == 'lonlat':
                     field_full = extract_gusto_field(data_file, field_name, time_idx)
                     coords_X_full, coords_Y_full, coords_Z_full = \
@@ -254,9 +254,9 @@ for time_idx in time_idxs:
                     )
                     # Convert height coordinate from m to km
                     coords_vert = coords_vert / 1000.0
-                # ---------------------------------------------------------- #
+                # ------------------------------------------------------------ #
                 # Plot data
-                # ---------------------------------------------------------- #
+                # ------------------------------------------------------------ #
                 cmap, lines = tomplot_cmap(
                     contours, colour_scheme, remove_contour=remove_contour
                 )
